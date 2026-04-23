@@ -153,7 +153,9 @@ dados = {
 with open("dados.json", "a") as f:
     f.write(json.dumps(dados) + "\n")
 
+# =========================
 # CSV
+# =========================
 arquivo_csv = "dados.csv"
 
 if not os.path.exists(arquivo_csv):
@@ -164,3 +166,38 @@ with open(arquivo_csv, "a") as f:
     f.write(f"{agora},{ativos},{round(uso,2)},{recomendacao}\n")
 
 print("\nDados salvos com sucesso!")
+
+# =========================
+# Enviar para InfluxDB
+# =========================
+from influxdb_client import InfluxDBClient, Point
+from influxdb_client.client.write_api import SYNCHRONOUS
+
+url = "http://localhost:8086"
+
+# ⚠️ COLOQUE SEU TOKEN CORRETO (SEM ESPAÇO E SEM >)
+from influxdb_client import InfluxDBClient, Point
+from influxdb_client.client.write_api import SYNCHRONOUS
+
+url = "http://localhost:8086"
+
+# 🔐 pega o token do ambiente (SEGURANÇA)
+token = os.getenv("INFLUX_TOKEN")
+
+org = "tcc"
+bucket = "monitoramento"
+
+try:
+    client = InfluxDBClient(url=url, token=token, org=org)
+    write_api = client.write_api(write_options=SYNCHRONOUS)
+
+    ponto = Point("rede") \
+        .field("ips_ativos", ativos) \
+        .field("uso", float(uso))
+
+    write_api.write(bucket=bucket, record=ponto)
+
+    print("Dados enviados para InfluxDB!")
+
+except Exception as e:
+    print("Erro ao enviar para InfluxDB:", e)
