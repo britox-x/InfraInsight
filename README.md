@@ -1,27 +1,25 @@
-# InfraInsight 🚀
+# InfraInsight
 
 Sistema inteligente de monitoramento e recomendação de evolução de infraestrutura de redes.
 
-## 📌 Sobre o projeto
+## Funcionalidades
 
-O InfraInsight é um projeto desenvolvido como Trabalho de Conclusão de Curso (TCC) com o objetivo de monitorar a utilização da rede e sugerir melhorias na infraestrutura com base no uso real.
-
-## ⚙️ Funcionalidades
-
-- Varredura de rede utilizando Nmap
-- Identificação de IPs ativos
+- Descoberta automática de rede
+- Scan de dispositivos com Nmap
+- Identificação por fabricante (MAC)
+- Classificação (roteador, celular, etc)
 - Cálculo de uso da rede
-- Geração de recomendações automáticas
+- Recomendação automática de upgrade
+- Exportação para JSON e CSV
 
-## 🧰 Tecnologias utilizadas
+## Tecnologias
 
 - Python
 - Nmap
-- Linux
-- Docker (em desenvolvimento)
+- Docker
 - Grafana (em desenvolvimento)
+- InfluxDB (em integração)
 
-## ▶️ Como executar
+## Objetivo
 
-```bash
-sudo python3 scanner.py
+Projeto de TCC focado em observabilidade, automação e planejamento de redes.
