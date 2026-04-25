@@ -1,25 +1,54 @@
 # InfraInsight
 
-Sistema inteligente de monitoramento e recomendação de evolução de infraestrutura de redes.
+Sistema de monitoramento de rede local com coleta, análise e armazenamento de dados.
 
-## Funcionalidades
+## 🔍 Funcionalidades
 
-- Descoberta automática de rede
-- Scan de dispositivos com Nmap
-- Identificação por fabricante (MAC)
-- Classificação (roteador, celular, etc)
-- Cálculo de uso da rede
-- Recomendação automática de upgrade
-- Exportação para JSON e CSV
+- Varredura automática da rede local (/24)
+- Detecção de dispositivos ativos via Nmap
+- Identificação de hostname e fabricante
+- Classificação de dispositivos (roteador, celular, computador, etc)
+- Cálculo de uso da rede (%)
+- Geração de recomendações
+- Exportação de dados para JSON e CSV
+- Integração com banco de dados InfluxDB
 
-## Tecnologias
+## ⚙️ Tecnologias
 
 - Python
 - Nmap
+- InfluxDB
 - Docker
-- Grafana (em desenvolvimento)
-- InfluxDB (em integração)
 
-## Objetivo
+## 📊 Métricas coletadas
 
-Projeto de TCC focado em observabilidade, automação e planejamento de redes.
+- IPs ativos
+- Uso da rede (%)
+- Tipo de dispositivos
+
+## 🧠 Lógica
+
+O sistema realiza:
+
+1. Descoberta da rede automaticamente
+2. Varredura com Nmap
+3. Tratamento e limpeza dos dados
+4. Classificação dos dispositivos
+5. Cálculo de utilização da rede
+6. Armazenamento local e envio para InfluxDB
+
+## 📁 Saídas
+
+- `dados.json` → histórico estruturado
+- `dados.csv` → análise tabular
+
+## 🚀 Possíveis melhorias
+
+- Identificação mais precisa de dispositivos
+- Dashboard em tempo real
+- Sistema de alertas
+- Monitoramento contínuo
+
+## 👨‍💻 Autor
+
+Matheus Brito
