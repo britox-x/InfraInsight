@@ -23,3 +23,10 @@
 {"timestamp": "2026-04-23T09:32:38.220821", "ips_ativos": 6, "uso": 2.36, "recomendacao": "OK"}
 {"timestamp": "2026-04-23T09:37:05.297133", "ips_ativos": 4, "uso": 1.57, "recomendacao": "OK"}
 {"timestamp": "2026-04-23T09:38:21.563537", "ips_ativos": 5, "uso": 1.97, "recomendacao": "OK"}
+{"timestamp": "2026-04-23T10:33:23.382982", "ips_ativos": 102, "uso": 40.16, "recomendacao": "OK"}
+{"timestamp": "2026-04-23T10:35:20.948481", "ips_ativos": 94, "uso": 37.01, "recomendacao": "OK"}
+{"timestamp": "2026-04-23T10:39:34.742316", "ips_ativos": 108, "uso": 42.52, "recomendacao": "OK"}
+{"timestamp": "2026-04-24T00:26:32.469280", "ips_ativos": 7, "uso": 2.76, "recomendacao": "OK"}
+{"timestamp": "2026-04-24T00:34:13.859291", "ips_ativos": 7, "uso": 2.76, "recomendacao": "OK"}
+{"timestamp": "2026-04-24T00:38:12.301599", "ips_ativos": 8, "uso": 3.15, "recomendacao": "OK"}
+{"timestamp": "2026-04-24T20:33:27.527253", "ips_ativos": 7, "uso": 2.76, "recomendacao": "OK"}
