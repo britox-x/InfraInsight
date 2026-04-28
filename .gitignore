@@ -1,6 +1,7 @@
 venv/
-__pycache__/
-*.pyc
-dados.json
-dados.csv
 .env
+__pycache__/
+dados.csv
+dados.json
+historico_dispositivos.json
+.gitignore~

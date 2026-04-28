@@ -3,6 +3,164 @@ import re
 import json
 import os
 from datetime import datetime
+from dotenv import load_dotenv
+from mac_vendor_lookup import MacLookup
+
+# =========================
+# Carregar variáveis de ambiente
+# =========================
+load_dotenv()
+
+mac_lookup = MacLookup()
+
+try:
+    mac_lookup.update_vendors()
+except:
+    pass
+
+# =========================
+# Histórico persistente por MAC
+# =========================
+historico_arquivo = "historico_dispositivos.json"
+
+if os.path.exists(historico_arquivo):
+    with open(historico_arquivo, "r") as f:
+        historico = json.load(f)
+else:
+    historico = {}
+
+# =========================
+# Descobrir MAC via ARP
+# =========================
+def obter_mac_por_ip(ip):
+    try:
+        arp_saida = subprocess.check_output(["arp", "-a"]).decode(errors="ignore")
+
+        for linha in arp_saida.splitlines():
+            if f"({ip})" in linha:
+                partes = linha.split()
+
+                for parte in partes:
+                    if ":" in parte and len(parte) >= 17:
+                        return parte.lower()
+
+    except:
+        pass
+
+    return "desconhecido"
+
+
+# =========================
+# Fabricante por MAC (lookup real + fallback)
+# =========================
+def fabricante_por_mac(mac):
+    if mac == "desconhecido":
+        return "desconhecido"
+
+    # Tenta base real
+    try:
+        vendor = mac_lookup.lookup(mac)
+        if vendor:
+            return vendor
+    except:
+        pass
+
+    # Fallback manual
+    prefixo = mac[:8].lower()
+
+    vendors = {
+        "24:4b:03": "Samsung",
+        "5c:0f:fb": "Amino",
+        "60:92:c8": "Streaming Device",
+        "78:3e:a1": "Nokia",
+        "c8:fe:0f": "Rede/IoT"
+    }
+
+    return vendors.get(prefixo, "desconhecido")
+
+
+# =========================
+# Scanner avançado para desconhecidos
+# =========================
+def escanear_detalhado(ip):
+    try:
+        detalhe = subprocess.check_output(
+            ["sudo", "nmap", "-O", "-sV", "--top-ports", "20", ip],
+            stderr=subprocess.DEVNULL,
+            timeout=35
+        ).decode(errors="ignore").lower()
+
+        if "android" in detalhe:
+            return "celular"
+
+        if "airplay" in detalhe or "airtunes" in detalhe or "rtsp" in detalhe:
+            return "smarttv/streaming"
+
+        if "printer" in detalhe or "ipp" in detalhe:
+            return "impressora"
+
+        if "mikrotik" in detalhe or "routeros" in detalhe:
+            return "roteador"
+
+        if "windows" in detalhe:
+            return "computador"
+
+        if "linux" in detalhe:
+            return "iot/linux"
+
+    except subprocess.TimeoutExpired:
+        return "timeout"
+
+    except:
+        pass
+
+    return "desconhecido"
+
+
+# =========================
+# Classificação central
+# =========================
+def classificar(nome, fabricante, ip):
+    nome = nome.lower()
+    fabricante = fabricante.lower()
+
+    # Roteador
+    if ip.endswith(".1") or ip.endswith(".254"):
+        return "roteador"
+
+    # TV / decoder
+    if "amino" in fabricante:
+        return "tv/decoder"
+
+    # Streaming / Smart TV
+    if any(x in fabricante for x in ["streaming", "roku", "chromecast", "samsung electronics"]):
+        return "smarttv/streaming"
+
+    # Celular
+    if any(x in fabricante for x in ["samsung", "xiaomi", "motorola", "apple", "lg"]):
+        return "celular"
+
+    if any(x in nome for x in ["android", "galaxy", "iphone", "redmi", "moto"]):
+        return "celular"
+
+    # Switch / AP
+    if any(x in fabricante for x in ["cisco", "tp-link", "ubiquiti", "intelbras"]):
+        return "switch/rede"
+
+    # Computador
+    if any(x in fabricante for x in ["intel", "dell", "lenovo", "asus", "acer"]):
+        return "computador"
+
+    # Impressora
+    if any(x in fabricante for x in ["epson", "brother", "hp"]):
+        return "impressora"
+
+    # Câmera
+    if any(x in fabricante for x in ["hikvision", "dahua", "camera"]):
+        return "câmera"
+
+    return "desconhecido"
+
 
 # =========================
 # Detectar rede automaticamente
@@ -14,10 +172,10 @@ rede = base + ".0/24"
 print("Rede detectada:", rede)
 
 # =========================
-# Executar Nmap (com MAC e fabricante)
+# Executar Nmap (mais completo)
 # =========================
 resultado = subprocess.check_output(
-    ["sudo", "nmap", "-sn", "-PR", "-n", rede]
+    ["sudo", "nmap", "-sn", "-PR", "-R", rede]
 ).decode()
 
 linhas = resultado.split("\n")
@@ -28,7 +186,6 @@ dispositivos = []
 # =========================
 for linha in linhas:
 
-    # Novo host encontrado
     if "Nmap scan report for" in linha:
         nome = "desconhecido"
         ip = None
@@ -37,6 +194,7 @@ for linha in linhas:
         if match:
             nome = match.group(1)
             ip = match.group(2)
+
         else:
             match = re.search(r"for (\d+\.\d+\.\d+\.\d+)", linha)
             if match:
@@ -46,19 +204,19 @@ for linha in linhas:
             dispositivos.append({
                 "ip": ip,
                 "nome": nome,
-                "mac": "N/A",
+                "mac": "desconhecido",
                 "fabricante": "desconhecido"
             })
 
-    # Captura MAC + fabricante
     elif "MAC Address" in linha:
         match = re.search(r"MAC Address: ([\w:]+) \((.+)\)", linha)
         if match and dispositivos:
-            dispositivos[-1]["mac"] = match.group(1)
+            dispositivos[-1]["mac"] = match.group(1).lower()
             dispositivos[-1]["fabricante"] = match.group(2)
 
+
 # =========================
-# Remover duplicados e inválidos
+# Remover duplicados
 # =========================
 ips_unicos = {}
 
@@ -66,37 +224,46 @@ for d in dispositivos:
     ip = d["ip"]
     ultimo = int(ip.split(".")[-1])
 
-    if ultimo != 0 and ultimo != 255:
+    if ultimo not in [0, 255]:
         ips_unicos[ip] = d
 
 dispositivos = list(ips_unicos.values())
 
-# ordenar IPs
+# Ordenar IP
 dispositivos.sort(key=lambda x: list(map(int, x["ip"].split("."))))
 
 # =========================
-# Classificação melhorada
+# Refinamento por ARP + Histórico + Scan
 # =========================
-def classificar(nome, fabricante, ip):
-    nome = nome.lower()
-    fabricante = fabricante.lower()
+for d in dispositivos:
 
-    if ip.endswith(".1") or ip.endswith(".254"):
-        return "roteador"
+    # Corrigir MAC
+    if d["mac"] == "desconhecido":
+        d["mac"] = obter_mac_por_ip(d["ip"])
 
-    if "samsung" in fabricante or "xiaomi" in fabricante:
-        return "celular"
+    # Corrigir fabricante
+    if d["fabricante"].lower() in ["unknown", "desconhecido"]:
+        fabricante_mac = fabricante_por_mac(d["mac"])
 
-    if "intel" in fabricante or "dell" in fabricante or "lenovo" in fabricante:
-        return "computador"
+        if fabricante_mac != "desconhecido":
+            d["fabricante"] = fabricante_mac
 
-    if "hikvision" in fabricante or "intelbras" in fabricante:
-        return "câmera"
+    # Histórico
+    if d["mac"] in historico:
+        d["tipo"] = historico[d["mac"]]
 
-    if "printer" in nome:
-        return "impressora"
+    else:
+        d["tipo"] = classificar(d["nome"], d["fabricante"], d["ip"])
 
-    return "desconhecido"
+        # Scan avançado apenas se ainda desconhecido
+        if d["tipo"] == "desconhecido":
+            tipo_detalhado = escanear_detalhado(d["ip"])
+
+            if tipo_detalhado != "desconhecido":
+                d["tipo"] = tipo_detalhado
+
+        historico[d["mac"]] = d["tipo"]
+
 
 # =========================
 # Cálculo de uso
@@ -128,10 +295,10 @@ print("\nDispositivos detectados:")
 tipos = {}
 
 for d in dispositivos:
-    tipo = classificar(d["nome"], d["fabricante"], d["ip"])
+    tipo = d["tipo"]
     tipos[tipo] = tipos.get(tipo, 0) + 1
 
-    print(f'{d["ip"]} → {d["nome"]} → {d["fabricante"]} → {tipo}')
+    print(f'{d["ip"]} → {d["nome"]} → {d["fabricante"]} → {d["mac"]} → {tipo}')
 
 print("\nResumo por tipo:")
 for t, q in tipos.items():
@@ -139,6 +306,12 @@ for t, q in tipos.items():
 
 # =========================
 # Salvar histórico
+# =========================
+with open(historico_arquivo, "w") as f:
+    json.dump(historico, f, indent=4)
+
+# =========================
+# Salvar métricas
 # =========================
 agora = datetime.now().isoformat()
 
@@ -153,9 +326,7 @@ dados = {
 with open("dados.json", "a") as f:
     f.write(json.dumps(dados) + "\n")
 
-# =========================
 # CSV
-# =========================
 arquivo_csv = "dados.csv"
 
 if not os.path.exists(arquivo_csv):
@@ -170,34 +341,30 @@ print("\nDados salvos com sucesso!")
 # =========================
 # Enviar para InfluxDB
 # =========================
-from influxdb_client import InfluxDBClient, Point
-from influxdb_client.client.write_api import SYNCHRONOUS
-
-url = "http://localhost:8086"
-
-# ⚠️ COLOQUE SEU TOKEN CORRETO (SEM ESPAÇO E SEM >)
-from influxdb_client import InfluxDBClient, Point
-from influxdb_client.client.write_api import SYNCHRONOUS
-
-url = "http://localhost:8086"
-
-# 🔐 pega o token do ambiente (SEGURANÇA)
-token = os.getenv("INFLUX_TOKEN")
-
-org = "tcc"
-bucket = "monitoramento"
-
 try:
-    client = InfluxDBClient(url=url, token=token, org=org)
-    write_api = client.write_api(write_options=SYNCHRONOUS)
+    from influxdb_client import InfluxDBClient, Point
+    from influxdb_client.client.write_api import SYNCHRONOUS
 
-    ponto = Point("rede") \
-        .field("ips_ativos", ativos) \
-        .field("uso", float(uso))
+    url = os.getenv("INFLUX_URL")
+    token = os.getenv("INFLUX_TOKEN")
+    org = os.getenv("INFLUX_ORG")
+    bucket = os.getenv("INFLUX_BUCKET")
 
-    write_api.write(bucket=bucket, record=ponto)
+    if all([url, token, org, bucket]):
 
-    print("Dados enviados para InfluxDB!")
+        client = InfluxDBClient(url=url, token=token, org=org)
+        write_api = client.write_api(write_options=SYNCHRONOUS)
+
+        ponto = Point("rede") \
+            .field("ips_ativos", ativos) \
+            .field("uso", float(uso))
+
+        write_api.write(bucket=bucket, record=ponto)
+
+        print("Dados enviados para InfluxDB!")
+
+    else:
+        print("InfluxDB não configurado (.env incompleto).")
 
 except Exception as e:
     print("Erro ao enviar para InfluxDB:", e)
