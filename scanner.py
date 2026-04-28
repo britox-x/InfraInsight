@@ -5,6 +5,8 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 from mac_vendor_lookup import MacLookup
+from modulos.utils import obter_mac_por_ip, fabricante_por_mac, escanear_detalhado
+
 
 # =========================
 # Carregar variáveis de ambiente
@@ -28,94 +30,6 @@ if os.path.exists(historico_arquivo):
         historico = json.load(f)
 else:
     historico = {}
-
-# =========================
-# Descobrir MAC via ARP
-# =========================
-def obter_mac_por_ip(ip):
-    try:
-        arp_saida = subprocess.check_output(["arp", "-a"]).decode(errors="ignore")
-
-        for linha in arp_saida.splitlines():
-            if f"({ip})" in linha:
-                partes = linha.split()
-
-                for parte in partes:
-                    if ":" in parte and len(parte) >= 17:
-                        return parte.lower()
-
-    except:
-        pass
-
-    return "desconhecido"
-
-
-# =========================
-# Fabricante por MAC (lookup real + fallback)
-# =========================
-def fabricante_por_mac(mac):
-    if mac == "desconhecido":
-        return "desconhecido"
-
-    # Tenta base real
-    try:
-        vendor = mac_lookup.lookup(mac)
-        if vendor:
-            return vendor
-    except:
-        pass
-
-    # Fallback manual
-    prefixo = mac[:8].lower()
-
-    vendors = {
-        "24:4b:03": "Samsung",
-        "5c:0f:fb": "Amino",
-        "60:92:c8": "Streaming Device",
-        "78:3e:a1": "Nokia",
-        "c8:fe:0f": "Rede/IoT"
-    }
-
-    return vendors.get(prefixo, "desconhecido")
-
-
-# =========================
-# Scanner avançado para desconhecidos
-# =========================
-def escanear_detalhado(ip):
-    try:
-        detalhe = subprocess.check_output(
-            ["sudo", "nmap", "-O", "-sV", "--top-ports", "20", ip],
-            stderr=subprocess.DEVNULL,
-            timeout=35
-        ).decode(errors="ignore").lower()
-
-        if "android" in detalhe:
-            return "celular"
-
-        if "airplay" in detalhe or "airtunes" in detalhe or "rtsp" in detalhe:
-            return "smarttv/streaming"
-
-        if "printer" in detalhe or "ipp" in detalhe:
-            return "impressora"
-
-        if "mikrotik" in detalhe or "routeros" in detalhe:
-            return "roteador"
-
-        if "windows" in detalhe:
-            return "computador"
-
-        if "linux" in detalhe:
-            return "iot/linux"
-
-    except subprocess.TimeoutExpired:
-        return "timeout"
-
-    except:
-        pass
-
-    return "desconhecido"
-
 
 # =========================
 # Classificação central
