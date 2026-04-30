@@ -5,8 +5,14 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 from mac_vendor_lookup import MacLookup
-from modulos.utils import obter_mac_por_ip, fabricante_por_mac, escanear_detalhado
-
+from modulos.utils import (
+    obter_mac_por_ip,
+    fabricante_por_mac,
+    escanear_detalhado,
+    detectar_rede,
+    obter_nome_wifi,
+    obter_gateway
+)
 
 # =========================
 # Carregar variáveis de ambiente
@@ -24,6 +30,8 @@ except:
 # Histórico persistente por MAC
 # =========================
 historico_arquivo = "historico_dispositivos.json"
+
+AMBIENTE = "Casa"  # Troque para IFRN, Empresa, Laboratório etc.
 
 if os.path.exists(historico_arquivo):
     with open(historico_arquivo, "r") as f:
@@ -79,11 +87,16 @@ def classificar(nome, fabricante, ip):
 # =========================
 # Detectar rede automaticamente
 # =========================
-ip_local = subprocess.check_output("hostname -I", shell=True).decode().split()[0]
-base = ".".join(ip_local.split(".")[:3])
-rede = base + ".0/24"
+
+rede = detectar_rede()
+nome_wifi = obter_nome_wifi()
+gateway = obter_gateway()
+
 
 print("Rede detectada:", rede)
+print("Wi-Fi:", nome_wifi)
+print("Gateway:", gateway)
+
 
 # =========================
 # Executar Nmap (mais completo)
@@ -132,24 +145,60 @@ for linha in linhas:
 # =========================
 # Remover duplicados
 # =========================
-ips_unicos = {}
-
+novos_dispositivos = []
 for d in dispositivos:
-    ip = d["ip"]
-    ultimo = int(ip.split(".")[-1])
 
-    if ultimo not in [0, 255]:
-        ips_unicos[ip] = d
 
-dispositivos = list(ips_unicos.values())
+    # Corrigir MAC
+    if d["mac"] == "desconhecido":
+        d["mac"] = obter_mac_por_ip(d["ip"])
 
-# Ordenar IP
-dispositivos.sort(key=lambda x: list(map(int, x["ip"].split("."))))
+    # Corrigir fabricante
+    if d["fabricante"].lower() in ["unknown", "desconhecido"]:
+        fabricante_mac = fabricante_por_mac(d["mac"])
+
+        if fabricante_mac != "desconhecido":
+            d["fabricante"] = fabricante_mac
+
+    # Detectar novos dispositivos
+
+    if d["mac"] not in historico and d["mac"] != "desconhecido":
+    	novos_dispositivos.append({
+             "ip": d["ip"],
+             "mac": d["mac"],
+             "fabricante": d["fabricante"]
+    	})
+
+
+    # Histórico
+    if d["mac"] in historico:
+        d["tipo"] = historico[d["mac"]]
+
+    else:
+        d["tipo"] = classificar(d["nome"], d["fabricante"], d["ip"])
+
+        if d["tipo"] == "desconhecido":
+            tipo_detalhado = escanear_detalhado(d["ip"])
+
+            if tipo_detalhado != "desconhecido":
+                d["tipo"] = tipo_detalhado
+
+        historico[d["mac"]] = d["tipo"]
 
 # =========================
 # Refinamento por ARP + Histórico + Scan
 # =========================
 for d in dispositivos:
+
+    if d["mac"] not in historico and d["mac"] != "desconhecido":
+        novos_dispositivos.append({
+            "ip": d["ip"],
+            "nome": d["nome"],
+            "mac": d["mac"],
+            "fabricante": d["fabricante"],
+            "tipo": d["tipo"],
+            "timestamp": agora
+        })
 
     # Corrigir MAC
     if d["mac"] == "desconhecido":
@@ -189,15 +238,21 @@ uso = (ativos / total_ips) * 100
 print("\nIPs ativos:", ativos)
 print("Uso da rede:", round(uso, 2), "%")
 
+if novos_dispositivos:
+    print("\nNovos dispositivos detectados:")
+    for novo in novos_dispositivos:
+        print(f'{novo["ip"]} → {novo["mac"]} → {novo["fabricante"]}')
+
+
 # =========================
 # Recomendação
 # =========================
-if uso > 80:
-    recomendacao = "Expandir sub-rede (possível saturação)"
-elif uso > 60:
-    recomendacao = "Monitorar crescimento"
-else:
+if uso < 50:
     recomendacao = "OK"
+elif uso < 80:
+    recomendacao = "ALERTA"
+else:
+    recomendacao = "CRÍTICO"
 
 print("Recomendação:", recomendacao)
 
@@ -229,26 +284,35 @@ with open(historico_arquivo, "w") as f:
 # =========================
 agora = datetime.now().isoformat()
 
+
+
 dados = {
     "timestamp": agora,
+    "ambiente": AMBIENTE,
+    "wifi": nome_wifi,
+    "subrede": rede,
+    "gateway": gateway,
     "ips_ativos": ativos,
     "uso": round(uso, 2),
-    "recomendacao": recomendacao
+    "recomendacao": recomendacao,
+    "dispositivos": dispositivos
 }
+
 
 # JSON
 with open("dados.json", "a") as f:
     f.write(json.dumps(dados) + "\n")
 
 # CSV
+
 arquivo_csv = "dados.csv"
 
 if not os.path.exists(arquivo_csv):
     with open(arquivo_csv, "w") as f:
-        f.write("timestamp,ips_ativos,uso,recomendacao\n")
+        f.write("timestamp,ambiente,wifi,subrede,gateway,ips_ativos,uso,recomendacao\n")
 
 with open(arquivo_csv, "a") as f:
-    f.write(f"{agora},{ativos},{round(uso,2)},{recomendacao}\n")
+    f.write(f"{agora},{AMBIENTE},{nome_wifi},{rede},{gateway},{ativos},{round(uso,2)},{recomendacao}\n")
 
 print("\nDados salvos com sucesso!")
 
@@ -265,15 +329,30 @@ try:
     bucket = os.getenv("INFLUX_BUCKET")
 
     if all([url, token, org, bucket]):
+        client = InfluxDBClient(
+            url=url,
+            token=token,
+            org=org
+        )
 
-        client = InfluxDBClient(url=url, token=token, org=org)
-        write_api = client.write_api(write_options=SYNCHRONOUS)
+        write_api = client.write_api(
+            write_options=SYNCHRONOUS
+        )
 
-        ponto = Point("rede") \
+        ponto = Point("infra_insingh") \
+            .tag("ambiente", AMBIENTE) \
+            .tag("wifi", nome_wifi) \
+            .tag("subrede", rede) \
+            .tag("gateway", gateway) \
             .field("ips_ativos", ativos) \
-            .field("uso", float(uso))
+            .field("uso", float(uso)) \
+            .field("novos_dispositivos", len(novos_dispositivos))
 
-        write_api.write(bucket=bucket, record=ponto)
+        write_api.write(
+            bucket=bucket,
+            org=org,
+            record=ponto
+        )
 
         print("Dados enviados para InfluxDB!")
 

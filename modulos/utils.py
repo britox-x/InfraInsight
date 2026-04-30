@@ -23,14 +23,13 @@ def obter_mac_por_ip(ip):
 
     return "desconhecido"
 
-
 def fabricante_por_mac(mac):
     if mac == "desconhecido":
         return "desconhecido"
 
     try:
         vendor = mac_lookup.lookup(mac)
-        if vendor:
+        if vendor and vendor.lower() != "unknown":
             return vendor
     except:
         pass
@@ -38,15 +37,40 @@ def fabricante_por_mac(mac):
     prefixo = mac[:8].lower()
 
     vendors = {
+        # TVs / Streaming
         "24:4b:03": "Samsung",
-        "5c:0f:fb": "Amino",
         "60:92:c8": "Roku",
+        "5c:0f:fb": "Amino",
+
+        # Infraestrutura
         "78:3e:a1": "Nokia",
-        "c8:fe:0f": "Rede/IoT"
+        "3c:84:6a": "TP-Link",
+        "a0:0f:37": "Cisco",
+        "80:85:44": "Intelbras",
+        "24:fe:9a": "CyberTAN",
+        "50:3e:aa": "TP-Link",
+
+        # Celulares
+        "fc:a9:f5": "Xiaomi",
+        "e0:80:6b": "Xiaomi",
+        "10:a2:d3": "Apple",
+        "e4:f3:c4": "Samsung",
+
+        # Computadores
+        "44:a3:bb": "Intel",
+        "74:70:fd": "Intel",
+        "98:bd:80": "Intel",
+        "00:d7:6d": "Intel",
+
+        # Genérico
+        "c8:fe:0f": "Rede/IoT",
     }
 
-    return vendors.get(prefixo, "desconhecido")
+    # MAC privado/randomizado
+    if len(mac) > 1 and mac[1].lower() in ["2", "6", "a", "e"]:
+        return "Privado/Randomizado"
 
+    return vendors.get(prefixo, "desconhecido")
 
 def escanear_detalhado(ip):
     try:
@@ -71,6 +95,64 @@ def escanear_detalhado(ip):
 
     except subprocess.TimeoutExpired:
         return "timeout"
+
+    except:
+        pass
+
+    return "desconhecido"
+import re
+
+
+# =========================
+# Detectar sub-rede automaticamente
+# =========================
+def detectar_rede():
+    try:
+        ip_local = subprocess.check_output(
+            ["hostname", "-I"]
+        ).decode().split()[0]
+
+        base = ".".join(ip_local.split(".")[:3])
+
+        return f"{base}.0/24"
+
+    except:
+        return "desconhecido"
+
+
+# =========================
+# Detectar nome da rede Wi-Fi (SSID)
+# =========================
+def obter_nome_wifi():
+    try:
+        resultado = subprocess.check_output(
+            ["nmcli", "-t", "-f", "active,ssid", "dev", "wifi"],
+            stderr=subprocess.DEVNULL
+        ).decode(errors="ignore")
+
+        for linha in resultado.splitlines():
+            if linha.startswith("yes:"):
+                return linha.split("yes:")[1].strip()
+
+    except:
+        pass
+
+    return "Cabeada/Ethernet"
+
+
+# =========================
+# Detectar gateway/roteador principal
+# =========================
+def obter_gateway():
+    try:
+        rota = subprocess.check_output(
+            ["ip", "route"]
+        ).decode(errors="ignore")
+
+        match = re.search(r"default via (\d+\.\d+\.\d+\.\d+)", rota)
+
+        if match:
+            return match.group(1)
 
     except:
         pass
