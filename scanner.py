@@ -27,12 +27,26 @@ except:
     pass
 
 # =========================
-# Histórico persistente por MAC
+# Configurações
 # =========================
 historico_arquivo = "historico_dispositivos.json"
+AMBIENTE = "Casa"
 
-AMBIENTE = "Casa"  # Troque para IFRN, Empresa, Laboratório etc.
+# =========================
+# Detectar rede
+# =========================
+rede = detectar_rede()
+nome_wifi = obter_nome_wifi()
+gateway = obter_gateway()
+agora = datetime.now().isoformat()
 
+print("Rede detectada:", rede)
+print("Wi-Fi:", nome_wifi)
+print("Gateway:", gateway)
+
+# =========================
+# Carregar histórico
+# =========================
 if os.path.exists(historico_arquivo):
     with open(historico_arquivo, "r") as f:
         historico = json.load(f)
@@ -43,8 +57,8 @@ else:
 # Classificação central
 # =========================
 def classificar(nome, fabricante, ip):
-    nome = nome.lower()
-    fabricante = fabricante.lower()
+    nome = (nome or "").lower()
+    fabricante = (fabricante or "").lower()
 
     # Roteador
     if ip.endswith(".1") or ip.endswith(".254"):
@@ -55,51 +69,92 @@ def classificar(nome, fabricante, ip):
         return "tv/decoder"
 
     # Streaming / Smart TV
-    if any(x in fabricante for x in ["streaming", "roku", "chromecast", "samsung electronics"]):
+    if any(x in fabricante for x in [
+        "streaming", "roku", "chromecast",
+        "samsung electronics", "amazon"
+    ]):
         return "smarttv/streaming"
 
+    # IoT / Rede
+    if "bilian" in fabricante:
+        return "iot/rede"
+
+    # MAC randomizado
+    if "privado" in fabricante or "randomizado" in fabricante:
+        return "dispositivo_privado"
+
     # Celular
-    if any(x in fabricante for x in ["samsung", "xiaomi", "motorola", "apple", "lg"]):
+    if any(x in fabricante for x in [
+        "samsung", "xiaomi", "motorola",
+        "apple", "lg"
+    ]):
         return "celular"
 
-    if any(x in nome for x in ["android", "galaxy", "iphone", "redmi", "moto"]):
+    if any(x in nome for x in [
+        "android", "galaxy", "iphone",
+        "redmi", "moto"
+    ]):
         return "celular"
 
     # Switch / AP
-    if any(x in fabricante for x in ["cisco", "tp-link", "ubiquiti", "intelbras"]):
+    if any(x in fabricante for x in [
+        "cisco", "tp-link", "ubiquiti",
+        "intelbras"
+    ]):
         return "switch/rede"
 
     # Computador
-    if any(x in fabricante for x in ["intel", "dell", "lenovo", "asus", "acer"]):
+    if any(x in fabricante for x in [
+        "intel", "dell", "lenovo",
+        "asus", "acer"
+    ]):
         return "computador"
 
     # Impressora
-    if any(x in fabricante for x in ["epson", "brother", "hp"]):
+    if any(x in fabricante for x in [
+        "epson", "brother", "hp"
+    ]):
         return "impressora"
 
     # Câmera
-    if any(x in fabricante for x in ["hikvision", "dahua", "camera"]):
+    if any(x in fabricante for x in [
+        "hikvision", "dahua", "camera"
+    ]):
         return "câmera"
 
     return "desconhecido"
 
 
 # =========================
-# Detectar rede automaticamente
+# Score de risco
 # =========================
+def calcular_risco(dispositivo, novo):
+    risco = 0
 
-rede = detectar_rede()
-nome_wifi = obter_nome_wifi()
-gateway = obter_gateway()
+    fabricante = dispositivo["fabricante"].lower()
+    nome = dispositivo["nome"].lower()
+    tipo = dispositivo["tipo"].lower()
 
+    if novo:
+        risco += 3
 
-print("Rede detectada:", rede)
-print("Wi-Fi:", nome_wifi)
-print("Gateway:", gateway)
+    if "privado" in fabricante or "randomizado" in fabricante:
+        risco += 2
+
+    if fabricante == "desconhecido":
+        risco += 2
+
+    if tipo == "desconhecido":
+        risco += 2
+
+    if nome == "desconhecido":
+        risco += 1
+
+    return min(risco, 10)
 
 
 # =========================
-# Executar Nmap (mais completo)
+# Executar Nmap
 # =========================
 resultado = subprocess.check_output(
     ["sudo", "nmap", "-sn", "-PR", "-R", rede]
@@ -109,7 +164,7 @@ linhas = resultado.split("\n")
 dispositivos = []
 
 # =========================
-# Parsing
+# Parsing inicial
 # =========================
 for linha in linhas:
 
@@ -118,12 +173,14 @@ for linha in linhas:
         ip = None
 
         match = re.search(r"for (.+) \((\d+\.\d+\.\d+\.\d+)\)", linha)
+
         if match:
             nome = match.group(1)
             ip = match.group(2)
 
         else:
             match = re.search(r"for (\d+\.\d+\.\d+\.\d+)", linha)
+
             if match:
                 ip = match.group(1)
 
@@ -137,17 +194,18 @@ for linha in linhas:
 
     elif "MAC Address" in linha:
         match = re.search(r"MAC Address: ([\w:]+) \((.+)\)", linha)
+
         if match and dispositivos:
             dispositivos[-1]["mac"] = match.group(1).lower()
             dispositivos[-1]["fabricante"] = match.group(2)
 
 
 # =========================
-# Remover duplicados
+# Processamento central
 # =========================
 novos_dispositivos = []
-for d in dispositivos:
 
+for d in dispositivos:
 
     # Corrigir MAC
     if d["mac"] == "desconhecido":
@@ -160,88 +218,98 @@ for d in dispositivos:
         if fabricante_mac != "desconhecido":
             d["fabricante"] = fabricante_mac
 
-    # Detectar novos dispositivos
-
-    if d["mac"] not in historico and d["mac"] != "desconhecido":
-    	novos_dispositivos.append({
-             "ip": d["ip"],
-             "mac": d["mac"],
-             "fabricante": d["fabricante"]
-    	})
+    # Verificar se é novo
+    novo = (
+        d["mac"] not in historico and
+        d["mac"] != "desconhecido"
+    )
 
 
-    # Histórico
+    # Classificação
     if d["mac"] in historico:
-        d["tipo"] = historico[d["mac"]]
+
+        # Compatibilidade com histórico antigo
+        if isinstance(historico[d["mac"]], str):
+            historico[d["mac"]] = {
+                "tipo": historico[d["mac"]],
+                "primeira_vista": agora,
+                "ultima_vista": agora,
+                "frequencia": 1
+            }
+
+        d["tipo"] = historico[d["mac"]]["tipo"]
 
     else:
-        d["tipo"] = classificar(d["nome"], d["fabricante"], d["ip"])
+        d["tipo"] = classificar(
+            d["nome"],
+            d["fabricante"],
+            d["ip"]
+        )
 
+        # Scan avançado se necessário
         if d["tipo"] == "desconhecido":
             tipo_detalhado = escanear_detalhado(d["ip"])
 
             if tipo_detalhado != "desconhecido":
                 d["tipo"] = tipo_detalhado
 
-        historico[d["mac"]] = d["tipo"]
 
-# =========================
-# Refinamento por ARP + Histórico + Scan
-# =========================
-for d in dispositivos:
 
-    if d["mac"] not in historico and d["mac"] != "desconhecido":
+    # Risco
+    d["risco"] = calcular_risco(d, novo)
+
+    # Registrar novo dispositivo
+    if novo:
         novos_dispositivos.append({
             "ip": d["ip"],
             "nome": d["nome"],
             "mac": d["mac"],
             "fabricante": d["fabricante"],
             "tipo": d["tipo"],
+            "risco": d["risco"],
             "timestamp": agora
         })
 
-    # Corrigir MAC
-    if d["mac"] == "desconhecido":
-        d["mac"] = obter_mac_por_ip(d["ip"])
+    # Atualizar histórico
+    if d["mac"] != "desconhecido":
+        if d["mac"] not in historico:
+            historico[d["mac"]] = {}
 
-    # Corrigir fabricante
-    if d["fabricante"].lower() in ["unknown", "desconhecido"]:
-        fabricante_mac = fabricante_por_mac(d["mac"])
-
-        if fabricante_mac != "desconhecido":
-            d["fabricante"] = fabricante_mac
-
-    # Histórico
-    if d["mac"] in historico:
-        d["tipo"] = historico[d["mac"]]
-
-    else:
-        d["tipo"] = classificar(d["nome"], d["fabricante"], d["ip"])
-
-        # Scan avançado apenas se ainda desconhecido
-        if d["tipo"] == "desconhecido":
-            tipo_detalhado = escanear_detalhado(d["ip"])
-
-            if tipo_detalhado != "desconhecido":
-                d["tipo"] = tipo_detalhado
-
-        historico[d["mac"]] = d["tipo"]
+        historico[d["mac"]].update({
+            "tipo": d["tipo"],
+            "primeira_vista": historico[d["mac"]].get(
+                "primeira_vista",
+                agora
+            ),
+            "ultima_vista": agora,
+            "frequencia": historico[d["mac"]].get(
+                "frequencia",
+                0
+            ) + 1
+        })
 
 
 # =========================
-# Cálculo de uso
+# Métricas
 # =========================
 ativos = len(dispositivos)
 total_ips = 254
 uso = (ativos / total_ips) * 100
 
-print("\nIPs ativos:", ativos)
-print("Uso da rede:", round(uso, 2), "%")
+desconhecidos = sum(
+    1 for d in dispositivos
+    if d["tipo"] == "desconhecido"
+)
 
-if novos_dispositivos:
-    print("\nNovos dispositivos detectados:")
-    for novo in novos_dispositivos:
-        print(f'{novo["ip"]} → {novo["mac"]} → {novo["fabricante"]}')
+mac_randomizados = sum(
+    1 for d in dispositivos
+    if "privado" in d["fabricante"].lower()
+)
+
+risco_medio = round(
+    sum(d["risco"] for d in dispositivos) / ativos,
+    2
+) if ativos > 0 else 0
 
 
 # =========================
@@ -254,7 +322,32 @@ elif uso < 80:
 else:
     recomendacao = "CRÍTICO"
 
-print("Recomendação:", recomendacao)
+
+# =========================
+# Saída principal
+# =========================
+print(f"\n[INFO] IPs ativos: {ativos}")
+print(f"[INFO] Uso da rede: {round(uso, 2)} %")
+print(f"[INFO] Risco médio: {risco_medio}/10")
+print(f"[INFO] MACs randomizados: {mac_randomizados}")
+print(f"[INFO] Dispositivos desconhecidos: {desconhecidos}")
+print(f"[INFO] Recomendação: {recomendacao}")
+
+# =========================
+# Novos dispositivos
+# =========================
+if novos_dispositivos:
+    print("\n[WARN] Novos dispositivos detectados:")
+
+    for novo in novos_dispositivos:
+        print(
+            f'{novo["ip"]} → '
+            f'{novo["mac"]} → '
+            f'{novo["fabricante"]} → '
+            f'{novo["tipo"]} → '
+            f'Risco {novo["risco"]}/10'
+        )
+
 
 # =========================
 # Saída detalhada
@@ -267,11 +360,23 @@ for d in dispositivos:
     tipo = d["tipo"]
     tipos[tipo] = tipos.get(tipo, 0) + 1
 
-    print(f'{d["ip"]} → {d["nome"]} → {d["fabricante"]} → {d["mac"]} → {tipo}')
+    print(
+        f'{d["ip"]} → '
+        f'{d["nome"]} → '
+        f'{d["fabricante"]} → '
+        f'{d["mac"]} → '
+        f'{tipo} → '
+        f'Risco {d["risco"]}/10'
+    )
 
+# =========================
+# Resumo por tipo
+# =========================
 print("\nResumo por tipo:")
+
 for t, q in tipos.items():
     print(f"{t}: {q}")
+
 
 # =========================
 # Salvar histórico
@@ -279,13 +384,10 @@ for t, q in tipos.items():
 with open(historico_arquivo, "w") as f:
     json.dump(historico, f, indent=4)
 
+
 # =========================
-# Salvar métricas
+# Dados estruturados
 # =========================
-agora = datetime.now().isoformat()
-
-
-
 dados = {
     "timestamp": agora,
     "ambiente": AMBIENTE,
@@ -294,27 +396,46 @@ dados = {
     "gateway": gateway,
     "ips_ativos": ativos,
     "uso": round(uso, 2),
+    "risco_medio": risco_medio,
+    "desconhecidos": desconhecidos,
+    "mac_randomizados": mac_randomizados,
+    "novos_dispositivos": len(novos_dispositivos),
     "recomendacao": recomendacao,
     "dispositivos": dispositivos
 }
 
 
-# JSON
+# =========================
+# Salvar JSON
+# =========================
 with open("dados.json", "a") as f:
     f.write(json.dumps(dados) + "\n")
 
-# CSV
 
+# =========================
+# Salvar CSV
+# =========================
 arquivo_csv = "dados.csv"
 
 if not os.path.exists(arquivo_csv):
     with open(arquivo_csv, "w") as f:
-        f.write("timestamp,ambiente,wifi,subrede,gateway,ips_ativos,uso,recomendacao\n")
+        f.write(
+            "timestamp,ambiente,wifi,subrede,gateway,"
+            "ips_ativos,uso,risco_medio,desconhecidos,"
+            "mac_randomizados,novos_dispositivos,recomendacao\n"
+        )
 
 with open(arquivo_csv, "a") as f:
-    f.write(f"{agora},{AMBIENTE},{nome_wifi},{rede},{gateway},{ativos},{round(uso,2)},{recomendacao}\n")
+    f.write(
+        f"{agora},{AMBIENTE},{nome_wifi},{rede},"
+        f"{gateway},{ativos},{round(uso,2)},"
+        f"{risco_medio},{desconhecidos},"
+        f"{mac_randomizados},{len(novos_dispositivos)},"
+        f"{recomendacao}\n"
+    )
 
 print("\nDados salvos com sucesso!")
+
 
 # =========================
 # Enviar para InfluxDB
@@ -329,6 +450,7 @@ try:
     bucket = os.getenv("INFLUX_BUCKET")
 
     if all([url, token, org, bucket]):
+
         client = InfluxDBClient(
             url=url,
             token=token,
@@ -339,14 +461,17 @@ try:
             write_options=SYNCHRONOUS
         )
 
-        ponto = Point("infra_insingh") \
+        ponto = Point("rede") \
             .tag("ambiente", AMBIENTE) \
             .tag("wifi", nome_wifi) \
             .tag("subrede", rede) \
             .tag("gateway", gateway) \
             .field("ips_ativos", ativos) \
             .field("uso", float(uso)) \
-            .field("novos_dispositivos", len(novos_dispositivos))
+            .field("novos_dispositivos", len(novos_dispositivos)) \
+            .field("desconhecidos", desconhecidos) \
+            .field("mac_randomizados", mac_randomizados) \
+            .field("risco_medio", float(risco_medio))
 
         write_api.write(
             bucket=bucket,
