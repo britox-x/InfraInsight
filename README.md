@@ -42,12 +42,11 @@ O sistema realiza:
 - `dados.json` → histórico estruturado
 - `dados.csv` → análise tabular
 
-## 🚀 Possíveis melhorias
-
-- Identificação mais precisa de dispositivos
-- Dashboard em tempo real
-- Sistema de alertas
-- Monitoramento contínuo
+## Novidades recentes
+- Classificação topológica inicial (gateway, borda, clientes privados)
+- Integração com sensor DD-WRT
+- Refinamento contextual de score de risco
+- Base para correlação multi-fonte
 
 ## 👨‍💻 Autor
 
