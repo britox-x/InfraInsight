@@ -60,70 +60,118 @@ def classificar(nome, fabricante, ip):
     nome = (nome or "").lower()
     fabricante = (fabricante or "").lower()
 
-    # Roteador
-    if ip.endswith(".1") or ip.endswith(".254"):
+    # =========================
+    # Topologia / Infraestrutura
+    # =========================
+
+    # Gateway principal
+    if ip.endswith(".254"):
+        return "gateway_principal"
+
+    # Sensor / AP secundário
+    if ip.endswith(".2") and "tp-link" in fabricante:
+        return "sensor_borda"
+
+    # MAC privado / randomizado
+    if "privado" in fabricante or "randomizado" in fabricante:
+        return "cliente_privado"
+
+    # Roteador comum
+    if ip.endswith(".1"):
         return "roteador"
 
-    # TV / decoder
+    # =========================
+    # TV / Decoder
+    # =========================
     if "amino" in fabricante:
         return "tv/decoder"
 
+    # =========================
     # Streaming / Smart TV
+    # =========================
     if any(x in fabricante for x in [
-        "streaming", "roku", "chromecast",
-        "samsung electronics", "amazon"
+        "streaming",
+        "roku",
+        "chromecast",
+        "samsung electronics",
+        "amazon"
     ]):
         return "smarttv/streaming"
 
+    # =========================
     # IoT / Rede
+    # =========================
     if "bilian" in fabricante:
         return "iot/rede"
 
-    # MAC randomizado
-    if "privado" in fabricante or "randomizado" in fabricante:
-        return "dispositivo_privado"
-
+    # =========================
     # Celular
+    # =========================
     if any(x in fabricante for x in [
-        "samsung", "xiaomi", "motorola",
-        "apple", "lg"
+        "samsung",
+        "xiaomi",
+        "motorola",
+        "apple",
+        "lg"
     ]):
         return "celular"
 
     if any(x in nome for x in [
-        "android", "galaxy", "iphone",
-        "redmi", "moto"
+        "android",
+        "galaxy",
+        "iphone",
+        "redmi",
+        "moto"
     ]):
         return "celular"
 
-    # Switch / AP
+    # =========================
+    # Switch / AP / Infra
+    # =========================
     if any(x in fabricante for x in [
-        "cisco", "tp-link", "ubiquiti",
+        "cisco",
+        "tp-link",
+        "ubiquiti",
         "intelbras"
     ]):
         return "switch/rede"
 
+    # =========================
     # Computador
+    # =========================
     if any(x in fabricante for x in [
-        "intel", "dell", "lenovo",
-        "asus", "acer"
+        "intel",
+        "dell",
+        "lenovo",
+        "asus",
+        "acer"
     ]):
         return "computador"
 
+    # =========================
     # Impressora
+    # =========================
     if any(x in fabricante for x in [
-        "epson", "brother", "hp"
+        "epson",
+        "brother",
+        "hp"
     ]):
         return "impressora"
 
+    # =========================
     # Câmera
+    # =========================
     if any(x in fabricante for x in [
-        "hikvision", "dahua", "camera"
+        "hikvision",
+        "dahua",
+        "camera"
     ]):
         return "câmera"
 
+    # =========================
+    # Fallback
+    # =========================
     return "desconhecido"
-
 
 # =========================
 # Score de risco
