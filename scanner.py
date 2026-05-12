@@ -176,30 +176,70 @@ def classificar(nome, fabricante, ip):
 # =========================
 # Score de risco
 # =========================
-def calcular_risco(dispositivo, novo):
+def calcular_risco(dispositivo, ips_ativos=0):
     risco = 0
 
-    fabricante = dispositivo["fabricante"].lower()
-    nome = dispositivo["nome"].lower()
-    tipo = dispositivo["tipo"].lower()
+    fabricante = (dispositivo.get("fabricante") or "").lower()
+    hostname = (dispositivo.get("hostname") or "").lower()
+    tipo = (dispositivo.get("tipo") or "").lower()
+    frequencia = dispositivo.get("frequencia", 1)
 
-    if novo:
-        risco += 3
-
+    # =========================
+    # MAC privado / randomizado
+    # =========================
     if "privado" in fabricante or "randomizado" in fabricante:
         risco += 2
 
-    if fabricante == "desconhecido":
-        risco += 2
+    # =========================
+    # Hostname desconhecido
+    # =========================
+    if hostname in ["", "desconhecido", "unknown"]:
+        risco += 1
 
+    # =========================
+    # Tipo desconhecido
+    # =========================
     if tipo == "desconhecido":
         risco += 2
 
-    if nome == "desconhecido":
+    # =========================
+    # Fabricante realmente desconhecido
+    # =========================
+    if fabricante in ["unknown", "desconhecido", ""]:
+        risco += 2
+
+    # =========================
+    # Novo / pouca recorrência
+    # =========================
+    if frequencia <= 2:
         risco += 1
 
-    return min(risco, 10)
+    # =========================
+    # Persistência reduz risco
+    # =========================
+    if frequencia > 10:
+        risco -= 2
+    elif frequencia > 5:
+        risco -= 1
 
+    # =========================
+    # Ambientes grandes = mais tolerância
+    # =========================
+    if ips_ativos >= 15:
+        risco -= 1
+
+    # =========================
+    # Infraestrutura confiável
+    # =========================
+    if tipo in ["gateway_principal", "sensor_borda"]:
+        risco = max(risco - 3, 0)
+
+    # =========================
+    # Limites
+    # =========================
+    risco = max(0, min(risco, 10))
+
+    return risco
 
 # =========================
 # Executar Nmap
