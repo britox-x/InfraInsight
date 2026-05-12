@@ -1,7 +1,7 @@
 venv/
-.env
 __pycache__/
+*.pyc
 dados.csv
 dados.json
+historico_antigo.json
 historico_dispositivos.json
-.gitignore~
