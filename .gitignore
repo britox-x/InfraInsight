@@ -1,7 +1,6 @@
 venv/
 __pycache__/
-*.pyc
-dados.csv
+.env
 dados.json
-historico_antigo.json
+dados.csv
 historico_dispositivos.json

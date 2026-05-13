@@ -5,6 +5,8 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 from mac_vendor_lookup import MacLookup
+from modulos.classificador import classificar_dispositivo
+from modulos.ddwrt import coletar_arp_ddwrt
 from modulos.utils import (
     obter_mac_por_ip,
     fabricante_por_mac,
@@ -54,133 +56,13 @@ else:
     historico = {}
 
 # =========================
-# Classificação central
-# =========================
-def classificar(nome, fabricante, ip):
-    nome = (nome or "").lower()
-    fabricante = (fabricante or "").lower()
-
-    # =========================
-    # Topologia / Infraestrutura
-    # =========================
-
-    # Gateway principal
-    if ip.endswith(".254"):
-        return "gateway_principal"
-
-    # Sensor / AP secundário
-    if ip.endswith(".2") and "tp-link" in fabricante:
-        return "sensor_borda"
-
-    # MAC privado / randomizado
-    if "privado" in fabricante or "randomizado" in fabricante:
-        return "cliente_privado"
-
-    # Roteador comum
-    if ip.endswith(".1"):
-        return "roteador"
-
-    # =========================
-    # TV / Decoder
-    # =========================
-    if "amino" in fabricante:
-        return "tv/decoder"
-
-    # =========================
-    # Streaming / Smart TV
-    # =========================
-    if any(x in fabricante for x in [
-        "streaming",
-        "roku",
-        "chromecast",
-        "samsung electronics",
-        "amazon"
-    ]):
-        return "smarttv/streaming"
-
-    # =========================
-    # IoT / Rede
-    # =========================
-    if "bilian" in fabricante:
-        return "iot/rede"
-
-    # =========================
-    # Celular
-    # =========================
-    if any(x in fabricante for x in [
-        "samsung",
-        "xiaomi",
-        "motorola",
-        "apple",
-        "lg"
-    ]):
-        return "celular"
-
-    if any(x in nome for x in [
-        "android",
-        "galaxy",
-        "iphone",
-        "redmi",
-        "moto"
-    ]):
-        return "celular"
-
-    # =========================
-    # Switch / AP / Infra
-    # =========================
-    if any(x in fabricante for x in [
-        "cisco",
-        "tp-link",
-        "ubiquiti",
-        "intelbras"
-    ]):
-        return "switch/rede"
-
-    # =========================
-    # Computador
-    # =========================
-    if any(x in fabricante for x in [
-        "intel",
-        "dell",
-        "lenovo",
-        "asus",
-        "acer"
-    ]):
-        return "computador"
-
-    # =========================
-    # Impressora
-    # =========================
-    if any(x in fabricante for x in [
-        "epson",
-        "brother",
-        "hp"
-    ]):
-        return "impressora"
-
-    # =========================
-    # Câmera
-    # =========================
-    if any(x in fabricante for x in [
-        "hikvision",
-        "dahua",
-        "camera"
-    ]):
-        return "câmera"
-
-    # =========================
-    # Fallback
-    # =========================
-    return "desconhecido"
-
-# =========================
 # Score de risco
 # =========================
 def calcular_risco(dispositivo, ips_ativos=0):
     risco = 0
 
     fabricante = (dispositivo.get("fabricante") or "").lower()
-    hostname = (dispositivo.get("hostname") or "").lower()
+    hostname = (dispositivo.get("nome") or "").lower()
     tipo = (dispositivo.get("tipo") or "").lower()
     frequencia = dispositivo.get("frequencia", 1)
 
@@ -251,6 +133,10 @@ resultado = subprocess.check_output(
 linhas = resultado.split("\n")
 dispositivos = []
 
+# Coleta complementar via DD-WRT
+dispositivos_ddwrt = coletar_arp_ddwrt()
+
+
 # =========================
 # Parsing inicial
 # =========================
@@ -287,6 +173,22 @@ for linha in linhas:
             dispositivos[-1]["mac"] = match.group(1).lower()
             dispositivos[-1]["fabricante"] = match.group(2)
 
+# =========================
+# Mesclar DD-WRT + Nmap
+# =========================
+for dd in dispositivos_ddwrt:
+    if not any(
+        d["ip"] == dd["ip"] or (
+            d["mac"] != "desconhecido" and d["mac"] == dd["mac"]
+        )
+        for d in dispositivos
+    ):
+        dispositivos.append({
+            "ip": dd["ip"],
+            "nome": "desconhecido",
+            "mac": dd["mac"],
+            "fabricante": fabricante_por_mac(dd["mac"])
+        })
 
 # =========================
 # Processamento central
@@ -328,11 +230,16 @@ for d in dispositivos:
         d["tipo"] = historico[d["mac"]]["tipo"]
 
     else:
-        d["tipo"] = classificar(
+        tipo, risco_base = classificar_dispositivo(
             d["nome"],
             d["fabricante"],
-            d["ip"]
+            d["mac"],
+            d["ip"],
+            gateway
         )
+
+        d["tipo"] = tipo
+        d["risco_base"] = risco_base
 
         # Scan avançado se necessário
         if d["tipo"] == "desconhecido":
@@ -341,10 +248,11 @@ for d in dispositivos:
             if tipo_detalhado != "desconhecido":
                 d["tipo"] = tipo_detalhado
 
-
-
     # Risco
-    d["risco"] = calcular_risco(d, novo)
+    d["risco"] = max(
+        d.get("risco_base", 0),
+        calcular_risco(d, len(dispositivos))
+    )
 
     # Registrar novo dispositivo
     if novo:
