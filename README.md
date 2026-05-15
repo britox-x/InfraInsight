@@ -1,53 +1,99 @@
 # InfraInsight
 
-Sistema de monitoramento de rede local com coleta, análise e armazenamento de dados.
+InfraInsight é um sistema de monitoramento e observabilidade de redes locais voltado para descoberta, classificação, análise de risco e histórico de dispositivos conectados.
 
-## 🔍 Funcionalidades
+O projeto foi desenvolvido para mapear ambientes domésticos ou pequenos escritórios utilizando múltiplas fontes de coleta, combinando varredura ativa, análise contextual e telemetria para gerar uma visão mais inteligente da infraestrutura de rede.
 
-- Varredura automática da rede local (/24)
-- Detecção de dispositivos ativos via Nmap
-- Identificação de hostname e fabricante
-- Classificação de dispositivos (roteador, celular, computador, etc)
-- Cálculo de uso da rede (%)
-- Geração de recomendações
-- Exportação de dados para JSON e CSV
-- Integração com banco de dados InfluxDB
+---
 
-## ⚙️ Tecnologias
+# 🚀 Principais Funcionalidades
 
-- Python
+## 🔎 Descoberta e Coleta
+- Detecção automática da sub-rede local
+- Varredura ativa com Nmap (`-sn`, ARP Ping)
+- Coleta complementar via DD-WRT (ARP remoto por SSH)
+- Identificação de gateway principal
+- Descoberta de hostname
+- Fingerprint por fabricante (vendor/MAC)
+
+---
+
+## 🧠 Classificação Inteligente
+- Roteador principal
+- Switch / Access Point / Infraestrutura
+- Computador conhecido
+- Celular
+- IoT / Smart devices
+- Dispositivos privados ou MAC randomizado
+- Dispositivos desconhecidos
+
+---
+
+# ⚠️ Análise de Risco
+Cada dispositivo recebe score contextual baseado em:
+- Fabricante desconhecido
+- Hostname ausente
+- MAC randomizado
+- Persistência histórica
+- Frequência de aparição
+- Tipo de dispositivo
+- Contexto topológico
+
+### Escala:
+- **0–2:** Baixo risco  
+- **3–5:** Médio risco  
+- **6–10:** Alto risco  
+
+---
+
+# 📊 Métricas Geradas
+- Total de IPs ativos
+- Percentual de uso da sub-rede
+- Quantidade de dispositivos desconhecidos
+- MACs randomizados
+- Novos dispositivos detectados
+- Risco médio da rede
+- Resumo por categoria de dispositivo
+
+---
+
+# 🗄️ Armazenamento e Histórico
+## Exportações locais:
+- `dados.json` → histórico estruturado por execução
+- `dados.csv` → métricas consolidadas
+- `historico_dispositivos.json` → persistência e frequência de dispositivos
+
+## Telemetria:
+- Integração com InfluxDB
+- Base pronta para dashboards Grafana
+
+---
+
+# 🛠️ Stack Tecnológica
+- Python 3
 - Nmap
+- SSH (DD-WRT)
 - InfluxDB
-- Docker
+- Docker / Docker Compose
+- JSON / CSV
 
-## 📊 Métricas coletadas
+---
 
-- IPs ativos
-- Uso da rede (%)
-- Tipo de dispositivos
+# 🏗️ Arquitetura do Fluxo
 
-## 🧠 Lógica
-
-O sistema realiza:
-
-1. Descoberta da rede automaticamente
-2. Varredura com Nmap
-3. Tratamento e limpeza dos dados
-4. Classificação dos dispositivos
-5. Cálculo de utilização da rede
-6. Armazenamento local e envio para InfluxDB
-
-## 📁 Saídas
-
-- `dados.json` → histórico estruturado
-- `dados.csv` → análise tabular
-
-## Novidades recentes
-- Classificação topológica inicial (gateway, borda, clientes privados)
-- Integração com sensor DD-WRT
-- Refinamento contextual de score de risco
-- Base para correlação multi-fonte
-
-## 👨‍💻 Autor
-
-Matheus Brito
+```text
+Detecção de Rede
+      ↓
+Nmap Scan
+      ↓
+DD-WRT ARP via SSH
+      ↓
+Correlação Multi-Fonte
+      ↓
+Classificação
+      ↓
+Score de Risco
+      ↓
+Histórico + JSON/CSV
+      ↓
+InfluxDB

@@ -1,13 +1,22 @@
 import subprocess
 import re
 
+SSH_KEY = "/home/matheus/.ssh/id_rsa_ddwrt"
+
 
 def executar_comando_ssh(host, comando):
     try:
-        ssh_cmd = f"ssh root@{host} '{comando}'"
+        ssh_cmd = [
+            "ssh",
+            "-i", SSH_KEY,
+            "-o", "StrictHostKeyChecking=no",
+            "-o", "ConnectTimeout=10",
+            f"root@{host}",
+            comando
+        ]
+
         resultado = subprocess.check_output(
             ssh_cmd,
-            shell=True,
             timeout=15
         ).decode(errors="ignore")
 
@@ -21,6 +30,9 @@ def coletar_arp_ddwrt(host="192.168.1.2"):
     resultado = executar_comando_ssh(host, "cat /proc/net/arp")
 
     dispositivos = []
+
+    if not resultado:
+        return dispositivos
 
     for linha in resultado.splitlines()[1:]:
         partes = linha.split()
@@ -45,6 +57,9 @@ def coletar_wifi_assoc(host="192.168.1.2"):
     resultado = executar_comando_ssh(host, "wl_atheros assoclist")
 
     dispositivos = []
+
+    if not resultado:
+        return dispositivos
 
     for linha in resultado.splitlines():
         match = re.search(r"([0-9A-Fa-f:]{17})", linha)
