@@ -21,11 +21,9 @@ def classificar_dispositivo(hostname, vendor, mac, ip, gateway=None):
 
     # Computador conhecido (hostname)
     if any(x in hostname for x in [
-        "matheus",
         "desktop",
         "notebook",
         "pc",
-        "550xcj",
         "linux",
         "ubuntu"
     ]):

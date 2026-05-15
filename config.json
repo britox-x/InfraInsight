@@ -1,0 +1,22 @@
+{
+  "ambiente": "Casa",
+  "gateway_ip": "",
+  "usar_influxdb": false,
+  "usar_sqlite": true,
+  "gerar_pdf": true,
+  "known_host_keywords": [
+    "desktop",
+    "notebook",
+    "linux",
+    "ubuntu",
+    "pc"
+  ],
+  "trusted_vendors": [
+    "tp-link",
+    "intelbras",
+    "ubiquiti",
+    "nokia",
+    "huawei",
+    "zte"
+  ]
+}

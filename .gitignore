@@ -1,8 +1,6 @@
 venv/
 __pycache__/
 *.pyc
+reports/*.pdf
+storage/*.db
 .env
-dados.json
-dados.csv
-historico_dispositivos.json
-historico_antigo.json

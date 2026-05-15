@@ -17,6 +17,20 @@ from modulos.utils import (
 )
 
 # =========================
+# Configuração central
+# =========================
+CONFIG_PATH = "config.json"
+
+if os.path.exists(CONFIG_PATH):
+    with open(CONFIG_PATH, "r") as f:
+        CONFIG = json.load(f)
+else:
+    CONFIG = {}
+
+AMBIENTE = CONFIG.get("ambiente", "Casa")
+gateway = CONFIG.get("gateway_ip") or obter_gateway()
+
+# =========================
 # Carregar variáveis de ambiente
 # =========================
 load_dotenv()
@@ -32,14 +46,13 @@ except:
 # Configurações
 # =========================
 historico_arquivo = "historico_dispositivos.json"
-AMBIENTE = "Casa"
 
 # =========================
 # Detectar rede
 # =========================
 rede = detectar_rede()
 nome_wifi = obter_nome_wifi()
-gateway = obter_gateway()
+gateway = gateway
 agora = datetime.now().isoformat()
 
 print("Rede detectada:", rede)
@@ -400,85 +413,23 @@ dados = {
     "dispositivos": dispositivos
 }
 
-
 # =========================
-# Salvar JSON
+# Persistência local (SQLite)
 # =========================
-with open("dados.json", "a") as f:
-    f.write(json.dumps(dados) + "\n")
 
+if CONFIG.get("usar_sqlite", True):
+    from storage.sqlite import iniciar_banco, salvar_scan
 
-# =========================
-# Salvar CSV
-# =========================
-arquivo_csv = "dados.csv"
+    iniciar_banco()
+    salvar_scan(dados)
 
-if not os.path.exists(arquivo_csv):
-    with open(arquivo_csv, "w") as f:
-        f.write(
-            "timestamp,ambiente,wifi,subrede,gateway,"
-            "ips_ativos,uso,risco_medio,desconhecidos,"
-            "mac_randomizados,novos_dispositivos,recomendacao\n"
-        )
+    print("\nDados salvos no SQLite com sucesso!")
 
-with open(arquivo_csv, "a") as f:
-    f.write(
-        f"{agora},{AMBIENTE},{nome_wifi},{rede},"
-        f"{gateway},{ativos},{round(uso,2)},"
-        f"{risco_medio},{desconhecidos},"
-        f"{mac_randomizados},{len(novos_dispositivos)},"
-        f"{recomendacao}\n"
-    )
-
-print("\nDados salvos com sucesso!")
-
-
-# =========================
-# Enviar para InfluxDB
-# =========================
-try:
-    from influxdb_client import InfluxDBClient, Point
-    from influxdb_client.client.write_api import SYNCHRONOUS
-
-    url = os.getenv("INFLUX_URL")
-    token = os.getenv("INFLUX_TOKEN")
-    org = os.getenv("INFLUX_ORG")
-    bucket = os.getenv("INFLUX_BUCKET")
-
-    if all([url, token, org, bucket]):
-
-        client = InfluxDBClient(
-            url=url,
-            token=token,
-            org=org
-        )
-
-        write_api = client.write_api(
-            write_options=SYNCHRONOUS
-        )
-
-        ponto = Point("rede") \
-            .tag("ambiente", AMBIENTE) \
-            .tag("wifi", nome_wifi) \
-            .tag("subrede", rede) \
-            .tag("gateway", gateway) \
-            .field("ips_ativos", ativos) \
-            .field("uso", float(uso)) \
-            .field("novos_dispositivos", len(novos_dispositivos)) \
-            .field("desconhecidos", desconhecidos) \
-            .field("mac_randomizados", mac_randomizados) \
-            .field("risco_medio", float(risco_medio))
-
-        write_api.write(
-            bucket=bucket,
-            org=org,
-            record=ponto
-        )
-
-        print("Dados enviados para InfluxDB!")
-
-    else:
-        print("InfluxDB não configurado (.env incompleto).")
-
-except Exception as e:
-    print("Erro ao enviar para InfluxDB:", e)
+# PDF opcional via config.json
+if CONFIG.get("gerar_pdf", False):
+    try:
+        from reports.pdf_report import gerar_pdf
+        gerar_pdf(dados)
+        print("Relatório PDF gerado com sucesso!")
+    except Exception as e:
+        print("Erro ao gerar PDF:", e)
