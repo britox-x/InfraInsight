@@ -1,61 +1,68 @@
-def classificar_dispositivo(hostname, vendor, mac, ip, gateway=None):
-    hostname = (hostname or "").lower()
-    vendor = (vendor or "").lower()
-    mac = (mac or "").lower()
+def classificar_dispositivo(nome, fabricante, mac, ip, gateway, known_host_keywords=None, trusted_vendors=None):
+    """
+    Classificação contextual de dispositivos InfraInsight
+    Retorna: (tipo, risco_base)
+    """
 
-    tipo = "desconhecido"
-    risco = 6
+    nome = (nome or "").lower()
+    fabricante = (fabricante or "").lower()
+    mac = (mac or "").lower()
+    ip = (ip or "").strip()
+    gateway = (gateway or "").strip()
+
+    known_host_keywords = known_host_keywords or []
+    trusted_vendors = trusted_vendors or []
 
     # Gateway principal
     if gateway and ip == gateway:
-        return "roteador", 2
+        return "roteador", 1
 
-    # Infraestrutura TP-Link / Switch / AP
-    if any(x in vendor for x in ["tp-link", "ubiquiti", "intelbras"]):
+    # Host conhecido
+    if any(keyword.lower() in nome for keyword in known_host_keywords):
+        return "computador_conhecido", 1
+
+    # Vendors confiáveis
+    if any(vendor.lower() in fabricante for vendor in trusted_vendors):
         return "switch/rede", 2
 
-    # Nokia / modem / gateway ISP
-    if any(x in vendor for x in ["nokia", "huawei", "zte"]):
-        return "roteador", 2
+    # Regras específicas
+    if "roku" in fabricante:
+        return "smarttv/streaming", 3
 
+    if "bilian" in fabricante:
+        return "iot/rede", 4
 
-    # Computador conhecido (hostname)
-    if any(x in hostname for x in [
-        "desktop",
-        "notebook",
-        "pc",
-        "linux",
-        "ubuntu"
-    ]):
-        return "computador_conhecido", 2
+    if "intelbras" in fabricante:
+        return "switch/ap", 2
 
-    # Computador por fabricante de placa de rede
-    if any(x in vendor for x in [
-        "intel",
-        "realtek",
-        "qualcomm",
-        "killer",
-        "broadcom"
-    ]):
-        return "computador", 3
+    if "hikvision" in fabricante:
+        return "camera", 4
 
+    if "epson" in fabricante:
+        return "impressora", 2
 
-    # Android / celular
-    if any(x in hostname for x in ["android", "motorola", "samsung", "xiaomi", "iphone"]):
-        return "celular", 3
+    if "amino" in fabricante:
+        return "tv_box", 4
 
-    # MAC randomizado/local
-    try:
-        primeiro_byte = int(mac.split(":")[0], 16)
+    if "nokia" in fabricante:
+        return "roteador", 1
 
-        if primeiro_byte & 2:
-            return "dispositivo_privado", 4
+    if "tp-link" in fabricante:
+        return "switch/rede", 2
 
-    except Exception:
-        pass
+    # MAC randomizado
+    if mac.startswith(("02:", "06:", "0a:", "0e:")):
+        return "privado/randomizado", 6
 
-    # IoT
-    if any(x in vendor for x in ["amazon", "google", "tuya", "espressif"]):
-        return "iot", 5
+    # Heurística por hostname
+    if any(keyword in nome for keyword in ["tv", "roku", "firestick", "chromecast"]):
+        return "smarttv/streaming", 4
 
-    return tipo, risco
+    if any(keyword in nome for keyword in ["cam", "camera", "hik"]):
+        return "camera", 4
+
+    if any(keyword in nome for keyword in ["printer", "epson", "hp"]):
+        return "impressora", 3
+
+    # Fallback
+    return "desconhecido", 6

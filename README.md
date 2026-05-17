@@ -1,8 +1,22 @@
 # InfraInsight
 
-InfraInsight é um sistema de monitoramento e observabilidade de redes locais voltado para descoberta, classificação, análise de risco e histórico de dispositivos conectados.
+InfraInsight é uma plataforma de monitoramento, observabilidade e análise contextual de redes locais (domésticas e SOHO), desenvolvida para descoberta inteligente de dispositivos, classificação automatizada, análise de risco, persistência histórica e visualização operacional.
 
-O projeto foi desenvolvido para mapear ambientes domésticos ou pequenos escritórios utilizando múltiplas fontes de coleta, combinando varredura ativa, análise contextual e telemetria para gerar uma visão mais inteligente da infraestrutura de rede.
+O projeto evoluiu de um scanner de rede para uma solução de telemetria de infraestrutura com foco em visibilidade, segurança doméstica e portfólio técnico em automação/SOC.
+
+---
+
+# 🎯 Objetivo
+
+Fornecer uma visão prática e inteligente da rede local por meio de:
+
+- Descoberta automática de dispositivos
+- Correlação entre múltiplas fontes
+- Classificação contextual
+- Score de risco por ambiente
+- Histórico persistente
+- Dashboard local
+- Relatórios automatizados
 
 ---
 
@@ -10,34 +24,39 @@ O projeto foi desenvolvido para mapear ambientes domésticos ou pequenos escrit�
 
 ## 🔎 Descoberta e Coleta
 - Detecção automática da sub-rede local
-- Varredura ativa com Nmap (`-sn`, ARP Ping)
-- Coleta complementar via DD-WRT (ARP remoto por SSH)
-- Identificação de gateway principal
-- Descoberta de hostname
-- Fingerprint por fabricante (vendor/MAC)
+- Descoberta de gateway
+- Varredura ativa via Nmap (`-sn`, ARP Ping)
+- Identificação de IPs ativos
+- Resolução de hostname
+- MAC Address + Vendor Lookup
+- Coleta complementar via DD-WRT (`/proc/net/arp` por SSH)
 
 ---
 
 ## 🧠 Classificação Inteligente
+Classificação contextual baseada em hostname, fabricante, persistência e topologia:
+
 - Roteador principal
-- Switch / Access Point / Infraestrutura
+- Switch / Infraestrutura
 - Computador conhecido
-- Celular
-- IoT / Smart devices
-- Dispositivos privados ou MAC randomizado
-- Dispositivos desconhecidos
+- Linux / Desktop
+- IoT / Smart Device
+- Dispositivo privado / MAC randomizado
+- Desconhecido
 
 ---
 
 # ⚠️ Análise de Risco
-Cada dispositivo recebe score contextual baseado em:
-- Fabricante desconhecido
-- Hostname ausente
-- MAC randomizado
+Cada dispositivo e cada scan recebem score contextual baseado em:
+
+- Fabricante
+- Hostname
+- MAC privado/randomizado
 - Persistência histórica
-- Frequência de aparição
+- Frequência
 - Tipo de dispositivo
 - Contexto topológico
+- Mudanças no ambiente
 
 ### Escala:
 - **0–2:** Baixo risco  
@@ -46,54 +65,40 @@ Cada dispositivo recebe score contextual baseado em:
 
 ---
 
-# 📊 Métricas Geradas
+# 📊 Métricas Geradas por Scan
 - Total de IPs ativos
-- Percentual de uso da sub-rede
-- Quantidade de dispositivos desconhecidos
+- Uso percentual da sub-rede
+- Risco médio
+- Dispositivos desconhecidos
 - MACs randomizados
-- Novos dispositivos detectados
-- Risco médio da rede
-- Resumo por categoria de dispositivo
+- Novos dispositivos
+- Recomendação operacional
+- Ambiente
+- Gateway
+- Wi-Fi / Ethernet
 
 ---
 
-# 🗄️ Armazenamento e Histórico
-## Exportações locais:
-- `dados.json` → histórico estruturado por execução
-- `dados.csv` → métricas consolidadas
-- `historico_dispositivos.json` → persistência e frequência de dispositivos
+# 🗄️ Persistência e Histórico
+## Armazenamento atual:
+### SQLite (padrão v2+)
+- Histórico consolidado de scans
+- Evolução temporal
+- Métricas por execução
 
-## Telemetria:
-- Integração com InfluxDB
-- Base pronta para dashboards Grafana
-
----
-
-# 🛠️ Stack Tecnológica
-- Python 3
-- Nmap
-- SSH (DD-WRT)
-- InfluxDB
-- Docker / Docker Compose
-- JSON / CSV
-
----
-
-# 🏗️ Arquitetura do Fluxo
-
+## Estrutura principal:
 ```text
-Detecção de Rede
-      ↓
-Nmap Scan
-      ↓
-DD-WRT ARP via SSH
-      ↓
-Correlação Multi-Fonte
-      ↓
-Classificação
-      ↓
-Score de Risco
-      ↓
-Histórico + JSON/CSV
-      ↓
-InfluxDB
+Tabela: scans
+- timestamp
+- ambiente
+- wifi
+- subrede
+- gateway
+- ips_ativos
+- uso
+- risco_medio
+- desconhecidos
+- mac_randomizados
+- novos_dispositivos
+- recomendacao
+- dispositivos

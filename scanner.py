@@ -3,6 +3,7 @@ import re
 import json
 import os
 from datetime import datetime
+from modulos.host_local import obter_host_local
 from dotenv import load_dotenv
 from mac_vendor_lookup import MacLookup
 from modulos.classificador import classificar_dispositivo
@@ -15,6 +16,12 @@ from modulos.utils import (
     obter_nome_wifi,
     obter_gateway
 )
+
+
+host_local = obter_host_local()
+
+print("[DEBUG] Host local detectado:", host_local)
+
 
 # =========================
 # Configuração central
@@ -33,14 +40,14 @@ gateway = CONFIG.get("gateway_ip") or obter_gateway()
 # =========================
 # Carregar variáveis de ambiente
 # =========================
-load_dotenv()
+#load_dotenv()
 
-mac_lookup = MacLookup()
+#mac_lookup = MacLookup()
 
-try:
-    mac_lookup.update_vendors()
-except:
-    pass
+#try:
+ #   mac_lookup.update_vendors()
+#except:
+ #   pass
 
 # =========================
 # Configurações
@@ -140,7 +147,7 @@ def calcular_risco(dispositivo, ips_ativos=0):
 # Executar Nmap
 # =========================
 resultado = subprocess.check_output(
-    ["sudo", "nmap", "-sn", "-PR", "-R", rede]
+    ["sudo", "nmap", "-sn","-n", "-PR", rede]
 ).decode()
 
 linhas = resultado.split("\n")
@@ -206,9 +213,80 @@ for dd in dispositivos_ddwrt:
 # =========================
 # Processamento central
 # =========================
+
 novos_dispositivos = []
 
 for d in dispositivos:
+
+    # =========================
+    # Auto reconhecer host local
+    # =========================
+    hostname = (d.get("nome") or "").lower()
+    mac = (d.get("mac") or "").lower()
+    ip = d.get("ip") or ""
+
+    if (
+        ip == host_local["ip"]
+        or mac == host_local["mac"]
+        or hostname == host_local["hostname"]
+    ):
+        d["tipo"] = "computador_conhecido"
+
+        # Corrigir MAC local automaticamente
+        if d["mac"] == "desconhecido":
+            d["mac"] = host_local["mac"]
+
+        d["fabricante"] = "local"
+        d["risco_base"] = 1
+        d["risco"] = 1
+
+        # Persistência
+        if d["mac"] != "desconhecido":
+            if d["mac"] not in historico:
+                historico[d["mac"]] = {}
+
+            historico[d["mac"]].update({
+                "tipo": d["tipo"],
+                "primeira_vista": historico[d["mac"]].get(
+                    "primeira_vista",
+                    agora
+                ),
+                "ultima_vista": agora,
+                "frequencia": historico[d["mac"]].get(
+                    "frequencia",
+                    0
+                ) + 1
+            })
+
+        print("[DEBUG] Host local classificado corretamente:", d["ip"])
+
+        continue
+
+        # Corrigir MAC se necessário
+        if d["mac"] == "desconhecido":
+            d["mac"] = obter_mac_por_ip(d["ip"])
+
+        # Persistência
+        if d["mac"] != "desconhecido":
+            if d["mac"] not in historico:
+                historico[d["mac"]] = {}
+
+            historico[d["mac"]].update({
+                "tipo": d["tipo"],
+                "primeira_vista": historico[d["mac"]].get(
+                    "primeira_vista",
+                    agora
+                ),
+                "ultima_vista": agora,
+                "frequencia": historico[d["mac"]].get(
+                    "frequencia",
+                    0
+                ) + 1
+            })
+
+        print("[DEBUG] Host local classificado corretamente:", d["ip"])
+
+        continue
 
     # Corrigir MAC
     if d["mac"] == "desconhecido":
@@ -433,3 +511,12 @@ if CONFIG.get("gerar_pdf", False):
         print("Relatório PDF gerado com sucesso!")
     except Exception as e:
         print("Erro ao gerar PDF:", e)
+# =========================
+# Geração de gráficos
+# =========================
+try:
+    from reports.graph_generator import gerar_graficos
+    gerar_graficos(dados)
+    print("Gráficos gerados em reports/graficos/")
+except Exception as e:
+    print("Erro ao gerar gráficos:", e)

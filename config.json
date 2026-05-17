@@ -1,15 +1,19 @@
 {
   "ambiente": "Casa",
   "gateway_ip": "",
+  "auto_trust_localhost": true,
   "usar_influxdb": false,
   "usar_sqlite": true,
   "gerar_pdf": true,
-  "known_host_keywords": [
-    "desktop",
-    "notebook",
-    "linux",
-    "ubuntu",
-    "pc"
+"known_host_keywords": [
+  "matheus",
+  "550XCJ",
+  "550XCR",
+  "desktop",
+  "notebook",
+  "linux",
+  "ubuntu",
+  "pc"
   ],
   "trusted_vendors": [
     "tp-link",
