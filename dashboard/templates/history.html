@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InfraInsight - Histórico</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+            background: #f4f6f9;
+            color: #222;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        a {
+            text-decoration: none;
+            color: #2563eb;
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            margin-top: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        th {
+            background: #1f2937;
+            color: white;
+            padding: 12px;
+        }
+
+        td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Histórico Completo de Scans</h1>
+
+    <p><a href="/">← Voltar para Dashboard</a></p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Timestamp</th>
+                <th>Ambiente</th>
+                <th>IPs Ativos</th>
+                <th>Uso %</th>
+                <th>Risco Médio</th>
+                <th>Desconhecidos</th>
+                <th>Novos Dispositivos</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for scan in scans %}
+            <tr>
+                <td>{{ scan.id }}</td>
+                <td>{{ scan.timestamp }}</td>
+                <td>{{ scan.ambiente }}</td>
+                <td>{{ scan.ips_ativos }}</td>
+                <td>{{ scan.uso }}</td>
+                <td>{{ scan.risco_medio }}</td>
+                <td>{{ scan.desconhecidos }}</td>
+                <td>{{ scan.novos_dispositivos }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</body>
+</html>
