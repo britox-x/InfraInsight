@@ -5,5 +5,7 @@
     "usar_ddwrt": true,
     "salvar_json": true,
     "salvar_csv": false,
-    "usar_sqlite": true
+    "usar_sqlite": true,
+    "gerar_pdf": true,
+    "gerar_graficos": true
 }

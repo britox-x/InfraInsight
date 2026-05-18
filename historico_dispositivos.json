@@ -2,38 +2,38 @@
     "c4:6e:1f:f3:a9:ef": {
         "tipo": "switch/rede",
         "primeira_vista": "2026-05-17T13:57:41.366434",
-        "ultima_vista": "2026-05-17T16:28:51.412430",
-        "frequencia": 10
+        "ultima_vista": "2026-05-18T00:36:05.154823",
+        "frequencia": 15
     },
     "5c:0f:fb:17:e0:d2": {
         "tipo": "desconhecido",
         "primeira_vista": "2026-05-17T13:57:41.366434",
-        "ultima_vista": "2026-05-17T15:46:14.540299",
-        "frequencia": 2
+        "ultima_vista": "2026-05-17T17:00:04.542414",
+        "frequencia": 3
     },
     "c8:fe:0f:24:b5:7d": {
         "tipo": "desconhecido",
         "primeira_vista": "2026-05-17T13:57:41.366434",
-        "ultima_vista": "2026-05-17T15:46:14.540299",
-        "frequencia": 2
+        "ultima_vista": "2026-05-17T17:00:04.542414",
+        "frequencia": 3
     },
     "78:3e:a1:90:50:80": {
         "tipo": "roteador",
         "primeira_vista": "2026-05-17T13:57:41.366434",
-        "ultima_vista": "2026-05-17T16:28:51.412430",
-        "frequencia": 9
+        "ultima_vista": "2026-05-18T00:36:05.154823",
+        "frequencia": 14
     },
     "8c:b0:e9:2b:ec:a3": {
         "tipo": "computador_conhecido",
         "primeira_vista": "2026-05-17T15:38:01.568231",
-        "ultima_vista": "2026-05-17T16:28:51.412430",
-        "frequencia": 7
+        "ultima_vista": "2026-05-18T00:36:05.154823",
+        "frequencia": 12
     },
     "24:4b:03:10:5d:98": {
         "tipo": "iot/linux",
         "primeira_vista": "2026-05-17T15:46:14.540299",
-        "ultima_vista": "2026-05-17T15:46:14.540299",
-        "frequencia": 1
+        "ultima_vista": "2026-05-17T17:00:04.542414",
+        "frequencia": 2
     },
     "60:92:c8:ea:e6:7a": {
         "tipo": "smarttv/streaming",
