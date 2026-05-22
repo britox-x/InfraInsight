@@ -1,183 +1,145 @@
+#!/usr/bin/env python3
+# scanner.py - InfraInsight Network Scanner
+
 import subprocess
 import re
 import json
 import os
+import socket
 from datetime import datetime
-from modulos.host_local import obter_host_local
-from dotenv import load_dotenv
-from mac_vendor_lookup import MacLookup
-from modulos.classificador import classificar_dispositivo
-from modulos.ddwrt import coletar_arp_ddwrt
-from modulos.utils import (
-    obter_mac_por_ip,
-    fabricante_por_mac,
-    escanear_detalhado,
-    detectar_rede,
-    obter_nome_wifi,
-    obter_gateway
-)
 
+from core.host_local import obter_host_local
+from core.classifier import classificar_dispositivo
+from core.risk_scorer import calcular_risco_avancado, classificar_severidade, gerar_recomendacoes
+from core.persistence import init_database, salvar_scan, carregar_historico
+from core.graph_generator import gerar_graficos
+from core.utils import obter_mac_por_ip, fabricante_por_mac, detectar_rede, obter_nome_wifi, obter_gateway, detectar_ambiente_por_rede
 
-host_local = obter_host_local()
-
-print("[DEBUG] Host local detectado:", host_local)
-
-
-# =========================
-# Configuração central
-# =========================
+# Configuração
 CONFIG_PATH = "config.json"
-
 if os.path.exists(CONFIG_PATH):
     with open(CONFIG_PATH, "r") as f:
         CONFIG = json.load(f)
 else:
     CONFIG = {}
 
-AMBIENTE = CONFIG.get("ambiente", "Casa")
+# ============================================================
+# DETECTAR AMBIENTE (colocar AQUI, depois do CONFIG)
+# ============================================================
 gateway = CONFIG.get("gateway_ip") or obter_gateway()
-
-# =========================
-# Carregar variáveis de ambiente
-# =========================
-#load_dotenv()
-
-#mac_lookup = MacLookup()
-
-#try:
- #   mac_lookup.update_vendors()
-#except:
- #   pass
-
-# =========================
-# Configurações
-# =========================
-historico_arquivo = "historico_dispositivos.json"
-
-# =========================
-# Detectar rede
-# =========================
 rede = detectar_rede()
 nome_wifi = obter_nome_wifi()
-gateway = gateway
-agora = datetime.now().isoformat()
 
-print("Rede detectada:", rede)
-print("Wi-Fi:", nome_wifi)
-print("Gateway:", gateway)
-
-# =========================
-# Carregar histórico
-# =========================
-if os.path.exists(historico_arquivo):
-    with open(historico_arquivo, "r") as f:
-        historico = json.load(f)
+# Verificar se deve forçar detecção de ambiente
+if CONFIG.get("ambiente_force_detect", False) or not CONFIG.get("ambiente"):
+    AMBIENTE = detectar_ambiente_por_rede(gateway, rede, nome_wifi)
 else:
-    historico = {}
+    AMBIENTE = CONFIG.get("ambiente", "Casa")
 
-# =========================
-# Score de risco
-# =========================
-def calcular_risco(dispositivo, ips_ativos=0):
-    risco = 0
+print(f"[INFO] Ambiente: {AMBIENTE}")
 
-    fabricante = (dispositivo.get("fabricante") or "").lower()
-    hostname = (dispositivo.get("nome") or "").lower()
-    tipo = (dispositivo.get("tipo") or "").lower()
-    frequencia = dispositivo.get("frequencia", 1)
+agora = datetime.now().isoformat()
+print(f"[INFO] Timestamp: {agora}")
 
-    # =========================
-    # MAC privado / randomizado
-    # =========================
-    if "privado" in fabricante or "randomizado" in fabricante:
-        risco += 2
+# ============================================================
+# INICIALIZAR BANCO E HOST LOCAL
+# ============================================================
+init_database()
+host_local = obter_host_local()
+print(f"[INFO] Host local identificado: {host_local.get('ip')} - {host_local.get('mac')}")
+print(f"[INFO] Rede detectada: {rede}")
+print(f"[INFO] Wi-Fi: {nome_wifi}")
+print(f"[INFO] Gateway: {gateway}")
 
-    # =========================
-    # Hostname desconhecido
-    # =========================
-    if hostname in ["", "desconhecido", "unknown"]:
-        risco += 1
 
-    # =========================
-    # Tipo desconhecido
-    # =========================
-    if tipo == "desconhecido":
-        risco += 2
+# ============================================================
+# CONTINUA O RESTO DO CÓDIGO
+# ============================================================
 
-    # =========================
-    # Fabricante realmente desconhecido
-    # =========================
-    if fabricante in ["unknown", "desconhecido", ""]:
-        risco += 2
+import socket
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    # =========================
-    # Novo / pouca recorrência
-    # =========================
-    if frequencia <= 2:
-        risco += 1
+def scan_port(ip, port, timeout=0.3):
+    """Escaneia uma única porta (para uso em paralelo)"""
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(timeout)
+        result = sock.connect_ex((ip, port))
+        sock.close()
+        return port if result == 0 else None
+    except:
+        return None
 
-    # =========================
-    # Persistência reduz risco
-    # =========================
-    if frequencia > 10:
-        risco -= 2
-    elif frequencia > 5:
-        risco -= 1
+def scan_ports(ip, ports=None, timeout=0.3, max_workers=20):
+    """
+    Escaneia portas em PARALELO (muito mais rápido)
+    
+    Args:
+        ip: Endereço IP
+        ports: Lista de portas (padrão: portas comuns)
+        timeout: Timeout em segundos
+        max_workers: Número máximo de threads paralelas
+    
+    Returns:
+        Lista de portas abertas
+    """
+    if ports is None:
+        ports = [22, 23, 80, 443, 445, 3389, 5900, 8080, 554, 1900, 
+                 21, 25, 110, 143, 993, 995, 1723, 3306, 5432, 27017]
+    
+    open_ports = []
+    
+    # Escanear em paralelo
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(scan_port, ip, port, timeout): port for port in ports}
+        
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                open_ports.append(result)
+    
+    return sorted(open_ports)
 
-    # =========================
-    # Ambientes grandes = mais tolerância
-    # =========================
-    if ips_ativos >= 15:
-        risco -= 1
+# Versão com cache para não re-escanear o mesmo IP
+PORTS_CACHE = {}
 
-    # =========================
-    # Infraestrutura confiável
-    # =========================
-    if tipo in ["gateway_principal", "sensor_borda"]:
-        risco = max(risco - 3, 0)
+def scan_ports_with_cache(ip, ports=None, force=False):
+    """
+    Versão com cache para evitar re-escaneamento
+    """
+    if not force and ip in PORTS_CACHE:
+        return PORTS_CACHE[ip]
+    
+    open_ports = scan_ports(ip, ports)
+    PORTS_CACHE[ip] = open_ports
+    return open_ports
 
-    # =========================
-    # Limites
-    # =========================
-    risco = max(0, min(risco, 10))
+# Carregar histórico
+historical_scans = carregar_historico(limit=50)
+all_historical_devices = []
+for scan in historical_scans:
+    all_historical_devices.extend(scan.get('devices', []))
 
-    return risco
+print(f"[INFO] Carregados {len(historical_scans)} scans históricos")
 
-# =========================
 # Executar Nmap
-# =========================
-resultado = subprocess.check_output(
-    ["sudo", "nmap", "-sn","-n", "-PR", rede]
-).decode()
-
+print("[INFO] Executando scan Nmap...")
+resultado = subprocess.check_output(["sudo", "nmap", "-sn", "-n", "-PR", rede]).decode()
 linhas = resultado.split("\n")
 dispositivos = []
 
-# Coleta complementar via DD-WRT
-dispositivos_ddwrt = coletar_arp_ddwrt()
-
-
-# =========================
-# Parsing inicial
-# =========================
 for linha in linhas:
-
     if "Nmap scan report for" in linha:
         nome = "desconhecido"
         ip = None
-
         match = re.search(r"for (.+) \((\d+\.\d+\.\d+\.\d+)\)", linha)
-
         if match:
             nome = match.group(1)
             ip = match.group(2)
-
         else:
             match = re.search(r"for (\d+\.\d+\.\d+\.\d+)", linha)
-
             if match:
                 ip = match.group(1)
-
         if ip:
             dispositivos.append({
                 "ip": ip,
@@ -185,167 +147,77 @@ for linha in linhas:
                 "mac": "desconhecido",
                 "fabricante": "desconhecido"
             })
-
     elif "MAC Address" in linha:
         match = re.search(r"MAC Address: ([\w:]+) \((.+)\)", linha)
-
         if match and dispositivos:
             dispositivos[-1]["mac"] = match.group(1).lower()
             dispositivos[-1]["fabricante"] = match.group(2)
 
-# =========================
-# Mesclar DD-WRT + Nmap
-# =========================
-for dd in dispositivos_ddwrt:
-    if not any(
-        d["ip"] == dd["ip"] or (
-            d["mac"] != "desconhecido" and d["mac"] == dd["mac"]
-        )
-        for d in dispositivos
-    ):
-        dispositivos.append({
-            "ip": dd["ip"],
-            "nome": "desconhecido",
-            "mac": dd["mac"],
-            "fabricante": fabricante_por_mac(dd["mac"])
-        })
+# Carregar histórico JSON
+historico_arquivo = "storage/historico_dispositivos.json"
+if os.path.exists(historico_arquivo):
+    with open(historico_arquivo, "r") as f:
+        historico_legado = json.load(f)
+else:
+    historico_legado = {}
 
-# =========================
-# Processamento central
-# =========================
-
+# Processar dispositivos
 novos_dispositivos = []
+dispositivos_processados = []
 
 for d in dispositivos:
-
-    # =========================
-    # Auto reconhecer host local
-    # =========================
-    hostname = (d.get("nome") or "").lower()
-    mac = (d.get("mac") or "").lower()
-    ip = d.get("ip") or ""
-
-    if (
-        ip == host_local["ip"]
-        or mac == host_local["mac"]
-        or hostname == host_local["hostname"]
-    ):
-        d["tipo"] = "computador_conhecido"
-
-        # Corrigir MAC local automaticamente
-        if d["mac"] == "desconhecido":
-            d["mac"] = host_local["mac"]
-
-        d["fabricante"] = "local"
-        d["risco_base"] = 1
-        d["risco"] = 1
-
-        # Persistência
-        if d["mac"] != "desconhecido":
-            if d["mac"] not in historico:
-                historico[d["mac"]] = {}
-
-            historico[d["mac"]].update({
-                "tipo": d["tipo"],
-                "primeira_vista": historico[d["mac"]].get(
-                    "primeira_vista",
-                    agora
-                ),
-                "ultima_vista": agora,
-                "frequencia": historico[d["mac"]].get(
-                    "frequencia",
-                    0
-                ) + 1
-            })
-
-        print("[DEBUG] Host local classificado corretamente:", d["ip"])
-
-        continue
-
-        # Corrigir MAC se necessário
-        if d["mac"] == "desconhecido":
-            d["mac"] = obter_mac_por_ip(d["ip"])
-
-        # Persistência
-        if d["mac"] != "desconhecido":
-            if d["mac"] not in historico:
-                historico[d["mac"]] = {}
-
-            historico[d["mac"]].update({
-                "tipo": d["tipo"],
-                "primeira_vista": historico[d["mac"]].get(
-                    "primeira_vista",
-                    agora
-                ),
-                "ultima_vista": agora,
-                "frequencia": historico[d["mac"]].get(
-                    "frequencia",
-                    0
-                ) + 1
-            })
-
-        print("[DEBUG] Host local classificado corretamente:", d["ip"])
-
-        continue
-
-    # Corrigir MAC
     if d["mac"] == "desconhecido":
         d["mac"] = obter_mac_por_ip(d["ip"])
-
-    # Corrigir fabricante
+    
     if d["fabricante"].lower() in ["unknown", "desconhecido"]:
         fabricante_mac = fabricante_por_mac(d["mac"])
-
         if fabricante_mac != "desconhecido":
             d["fabricante"] = fabricante_mac
-
-    # Verificar se é novo
-    novo = (
-        d["mac"] not in historico and
-        d["mac"] != "desconhecido"
+    
+    ip = d.get("ip") or ""
+    mac = d.get("mac") or ""
+    
+    if ip == host_local.get("ip") or mac == host_local.get("mac"):
+        d["tipo"] = "computador_conhecido"
+        if d["mac"] == "desconhecido":
+            d["mac"] = host_local.get("mac")
+        d["fabricante"] = "local"
+        d["open_ports"] = scan_ports(d["ip"])
+        
+        risk_score, risk_details = calcular_risco_avancado(d, all_historical_devices)
+        d["risco"] = risk_score
+        severity, _ = classificar_severidade(risk_score)
+        d["severity"] = severity
+        d["recommendations"] = gerar_recomendacoes(risk_score, risk_details, d)
+        
+        print(f"[INFO] Host local: {d['ip']} (Risco: {risk_score}/10)")
+        dispositivos_processados.append(d)
+        continue
+    
+    novo = (d["mac"] not in historico_legado and d["mac"] != "desconhecido")
+    d["open_ports"] = scan_ports(d["ip"])
+    
+        # Classificação
+    tipo, _ = classificar_dispositivo(
+        hostname=d["nome"],
+        vendor=d["fabricante"],
+        ip=d["ip"],
+        mac=d["mac"],
+        open_ports=d.get("open_ports", [])
     )
+    d["tipo"] = tipo
+    
+    # Forçar gateway como roteador
+    if d["ip"] == "192.168.0.1" or d["ip"] == gateway:
+        d["tipo"] = "roteador"
+        print(f"[INFO] Gateway forçado como roteador: {d['ip']}")
 
-
-    # Classificação
-    if d["mac"] in historico:
-
-        # Compatibilidade com histórico antigo
-        if isinstance(historico[d["mac"]], str):
-            historico[d["mac"]] = {
-                "tipo": historico[d["mac"]],
-                "primeira_vista": agora,
-                "ultima_vista": agora,
-                "frequencia": 1
-            }
-
-        d["tipo"] = historico[d["mac"]]["tipo"]
-
-    else:
-        tipo, risco_base = classificar_dispositivo(
-            d["nome"],
-            d["fabricante"],
-            d["mac"],
-            d["ip"],
-            gateway
-        )
-
-        d["tipo"] = tipo
-        d["risco_base"] = risco_base
-
-        # Scan avançado se necessário
-        if d["tipo"] == "desconhecido":
-            tipo_detalhado = escanear_detalhado(d["ip"])
-
-            if tipo_detalhado != "desconhecido":
-                d["tipo"] = tipo_detalhado
-
-    # Risco
-    d["risco"] = max(
-        d.get("risco_base", 0),
-        calcular_risco(d, len(dispositivos))
-    )
-
-    # Registrar novo dispositivo
+    risk_score, risk_details = calcular_risco_avancado(d, all_historical_devices)
+    d["risco"] = risk_score
+    severity, _ = classificar_severidade(risk_score)
+    d["severity"] = severity
+    d["recommendations"] = gerar_recomendacoes(risk_score, risk_details, d)
+    
     if novo:
         novos_dispositivos.append({
             "ip": d["ip"],
@@ -354,127 +226,46 @@ for d in dispositivos:
             "fabricante": d["fabricante"],
             "tipo": d["tipo"],
             "risco": d["risco"],
-            "timestamp": agora
+            "severity": severity
         })
-
-    # Atualizar histórico
+    
     if d["mac"] != "desconhecido":
-        if d["mac"] not in historico:
-            historico[d["mac"]] = {}
-
-        historico[d["mac"]].update({
+        if d["mac"] not in historico_legado:
+            historico_legado[d["mac"]] = {}
+        historico_legado[d["mac"]].update({
             "tipo": d["tipo"],
-            "primeira_vista": historico[d["mac"]].get(
-                "primeira_vista",
-                agora
-            ),
             "ultima_vista": agora,
-            "frequencia": historico[d["mac"]].get(
-                "frequencia",
-                0
-            ) + 1
+            "frequencia": historico_legado[d["mac"]].get("frequencia", 0) + 1
         })
+    
+    dispositivos_processados.append(d)
 
-
-# =========================
 # Métricas
-# =========================
-ativos = len(dispositivos)
-total_ips = 254
-uso = (ativos / total_ips) * 100
+ativos = len(dispositivos_processados)
+uso = (ativos / 254) * 100
+desconhecidos = sum(1 for d in dispositivos_processados if d["tipo"] == "desconhecido")
+mac_randomizados = sum(1 for d in dispositivos_processados if "privado" in d["fabricante"].lower())
+risco_medio = round(sum(d["risco"] for d in dispositivos_processados) / ativos, 2) if ativos > 0 else 0
 
-desconhecidos = sum(
-    1 for d in dispositivos
-    if d["tipo"] == "desconhecido"
-)
+print("\n" + "="*50)
+print("RESUMO DO SCAN")
+print("="*50)
+print(f"IPs ativos: {ativos}")
+print(f"Uso da rede: {round(uso, 2)}%")
+print(f"Risco medio: {risco_medio}/10")
+print(f"MACs randomizados: {mac_randomizados}")
+print(f"Desconhecidos: {desconhecidos}")
 
-mac_randomizados = sum(
-    1 for d in dispositivos
-    if "privado" in d["fabricante"].lower()
-)
-
-risco_medio = round(
-    sum(d["risco"] for d in dispositivos) / ativos,
-    2
-) if ativos > 0 else 0
-
-
-# =========================
-# Recomendação
-# =========================
-if uso < 50:
-    recomendacao = "OK"
-elif uso < 80:
-    recomendacao = "ALERTA"
-else:
-    recomendacao = "CRÍTICO"
-
-
-# =========================
-# Saída principal
-# =========================
-print(f"\n[INFO] IPs ativos: {ativos}")
-print(f"[INFO] Uso da rede: {round(uso, 2)} %")
-print(f"[INFO] Risco médio: {risco_medio}/10")
-print(f"[INFO] MACs randomizados: {mac_randomizados}")
-print(f"[INFO] Dispositivos desconhecidos: {desconhecidos}")
-print(f"[INFO] Recomendação: {recomendacao}")
-
-# =========================
-# Novos dispositivos
-# =========================
-if novos_dispositivos:
-    print("\n[WARN] Novos dispositivos detectados:")
-
-    for novo in novos_dispositivos:
-        print(
-            f'{novo["ip"]} → '
-            f'{novo["mac"]} → '
-            f'{novo["fabricante"]} → '
-            f'{novo["tipo"]} → '
-            f'Risco {novo["risco"]}/10'
-        )
-
-
-# =========================
-# Saída detalhada
-# =========================
 print("\nDispositivos detectados:")
+for d in dispositivos_processados:
+    icon = "🟢" if d["risco"] <= 2 else "🟡" if d["risco"] <= 5 else "🟠"
+    print(f"{icon} {d['ip']:15} | {d['nome'][:20]:20} | {d['fabricante'][:25]:25} | {d['tipo'][:20]:20} | Risco {d['risco']}/10")
 
-tipos = {}
-
-for d in dispositivos:
-    tipo = d["tipo"]
-    tipos[tipo] = tipos.get(tipo, 0) + 1
-
-    print(
-        f'{d["ip"]} → '
-        f'{d["nome"]} → '
-        f'{d["fabricante"]} → '
-        f'{d["mac"]} → '
-        f'{tipo} → '
-        f'Risco {d["risco"]}/10'
-    )
-
-# =========================
-# Resumo por tipo
-# =========================
-print("\nResumo por tipo:")
-
-for t, q in tipos.items():
-    print(f"{t}: {q}")
-
-
-# =========================
 # Salvar histórico
-# =========================
 with open(historico_arquivo, "w") as f:
-    json.dump(historico, f, indent=4)
+    json.dump(historico_legado, f, indent=4)
 
-
-# =========================
-# Dados estruturados
-# =========================
+# Salvar no SQLite
 dados = {
     "timestamp": agora,
     "ambiente": AMBIENTE,
@@ -487,47 +278,75 @@ dados = {
     "desconhecidos": desconhecidos,
     "mac_randomizados": mac_randomizados,
     "novos_dispositivos": len(novos_dispositivos),
-    "recomendacao": recomendacao,
-    "dispositivos": dispositivos
+    "recomendacao": "OK",
+    "dispositivos": dispositivos_processados
 }
 
-# =========================
-# Persistência local (SQLite)
-# =========================
-
-if CONFIG.get("usar_sqlite", True):
-    from storage.sqlite import iniciar_banco, salvar_scan
-
-    iniciar_banco()
+try:
     salvar_scan(dados)
+    print("\nDados salvos no SQLite!")
+except Exception as e:
+    print(f"Erro ao salvar: {e}")
 
-    print("\nDados salvos no SQLite com sucesso!")
+try:
+    gerar_graficos(dados)
+    print("Graficos gerados!")
+except Exception as e:
+    print(f"Erro nos graficos: {e}")
 
-
-
-# PDF opcional via config.json
-if CONFIG.get("gerar_pdf", False):
-    try:
-        from reports.pdf_report import gerar_pdf
-
-        # Novo formato compatível com pdf_report premium
-        caminho_pdf = gerar_pdf(
-            dados["dispositivos"],
-            historico=list(historico.values()) if isinstance(historico, dict) else historico
-        )
-
-        print(f"Relatório PDF gerado com sucesso! → {caminho_pdf}")
-
-    except Exception as e:
-        print("Erro ao gerar PDF:", e)
-
-
+print(f"\nScan concluido em {datetime.now().strftime('%H:%M:%S')}")
 # =========================
-# Geração de gráficos
+# Geração do PDF
 # =========================
 try:
-    from modulos.graph_generator import gerar_graficos
-    gerar_graficos(dados)
-    print("Gráficos gerados em reports/graficos/")
+    from reports.pdf_report import gerar_pdf
+    
+    # Preparar dados para o PDF
+    dispositivos_pdf = []
+    for d in dispositivos_processados:
+        dispositivos_pdf.append({
+            "ip": d.get("ip", "-"),
+            "hostname": d.get("nome", "-"),
+            "mac": d.get("mac", "-"),
+            "vendor": d.get("fabricante", "Desconhecido"),
+            "tipo": d.get("tipo", "desconhecido"),
+            "risco": d.get("risco", 3),
+            "severity": d.get("severity", "Médio"),
+            "open_ports": d.get("open_ports", [])
+        })
+    
+    # Carregar histórico para o PDF
+    historico_scans_arquivo = "storage/historico_scans.json"
+    if os.path.exists(historico_scans_arquivo):
+        with open(historico_scans_arquivo, "r") as f:
+            historico_pdf = json.load(f)
+    else:
+        historico_pdf = []
+    
+    caminho_pdf = gerar_pdf(dispositivos_pdf, historico_pdf)
+    print(f"\n📄 Relatório PDF gerado: {caminho_pdf}")
 except Exception as e:
-    print("Erro ao gerar gráficos:", e)
+    print(f"❌ Erro ao gerar PDF: {e}")
+# =========================
+# Alertas de segurança
+# =========================
+print("\n" + "="*60)
+print("🔒 ALERTAS DE SEGURANÇA")
+print("="*60)
+
+alertas_gerados = 0
+for d in dispositivos_processados:
+    if d["risco"] >= 7:
+        alertas_gerados += 1
+        print(f"🚨 ALTO RISCO: {d['ip']} - {d['tipo']} (Risco {d['risco']}/10)")
+        for rec in d.get('recommendations', [])[:2]:
+            print(f"   → {rec}")
+    elif d["risco"] >= 5:
+        alertas_gerados += 1
+        print(f"⚠️ RISCO MÉDIO: {d['ip']} - {d['tipo']} (Risco {d['risco']}/10)")
+
+if alertas_gerados == 0:
+    print("✅ Nenhum alerta de segurança significativo detectado")
+
+print("="*60)
+print(f"✅ Scan concluído em {datetime.now().strftime('%H:%M:%S')}")

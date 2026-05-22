@@ -1,223 +1,420 @@
 # <img src="assets/logo.png" height="36" align="center" alt="logo"> &nbsp; Antena InfraInsight
 
 <p align="center">
-  <img src="assets/banner.png" alt="Antena InfraInsight Banner" width="700"/>
+  <img src="assets/banner.png" alt="Antena InfraInsight Banner" width="780"/>
 </p>
 
 <p align="center">
   <strong>Visibilidade Inteligente Para Sua Rede</strong><br/>
-  Scanner de rede local com classificação inteligente, risk scoring contextual, dashboard web e relatórios PDF profissionais.
+  Plataforma de observabilidade e análise contextual de redes locais com classificação inteligente, dashboard web e relatórios PDF profissionais.
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10%2B-blue?style=flat-square&logo=python" alt="Python"/>
   <img src="https://img.shields.io/badge/Flask-Dashboard-lightgrey?style=flat-square&logo=flask" alt="Flask"/>
   <img src="https://img.shields.io/badge/nmap-integrado-green?style=flat-square" alt="nmap"/>
-  <img src="https://img.shields.io/badge/Relatório-PDF-red?style=flat-square" alt="PDF"/>
+  <img src="https://img.shields.io/badge/PDF-Reports-red?style=flat-square" alt="PDF"/>
   <img src="https://img.shields.io/badge/SQLite-Histórico-yellow?style=flat-square&logo=sqlite" alt="SQLite"/>
-  <img src="https://img.shields.io/badge/Status-Em%20desenvolvimento-orange?style=flat-square" alt="Status"/>
+  <img src="https://img.shields.io/badge/Status-MVP-orange?style=flat-square" alt="Status"/>
 </p>
 
 ---
 
-## 📡 O que é o InfraInsight?
+# 📡 Sobre o Projeto
 
-O **Antena InfraInsight** é uma plataforma de visibilidade de infraestrutura local desenvolvida em Python. Vai além do simples "quem está na rede" — ele **classifica**, **analisa riscos**, **persiste histórico** e **gera relatórios visuais** de forma automatizada.
+O **Antena InfraInsight** é uma plataforma de visibilidade inteligente para redes locais desenvolvida em Python.
 
-Ideal para uso em ambientes domésticos, home labs e pequenas redes corporativas.
+O sistema realiza:
+
+- descoberta de dispositivos
+- classificação contextual
+- análise básica de risco
+- persistência histórica
+- visualização em dashboard
+- geração automática de relatórios PDF
+
+O objetivo é transformar informações técnicas de rede em inteligência visual e operacional acessível.
 
 ---
 
-## 🖥️ Screenshots
+# 🎯 Objetivo
+
+Redes locais geralmente possuem baixa visibilidade sobre:
+
+- dispositivos conectados
+- equipamentos desconhecidos
+- comportamento da infraestrutura
+- possíveis riscos contextuais
+
+O InfraInsight busca resolver isso através de:
+
+✅ descoberta automatizada  
+✅ classificação inteligente  
+✅ scoring contextual de risco  
+✅ visualização centralizada  
+✅ relatórios profissionais  
+
+---
+
+# 🖥️ Screenshots
+
+## Dashboard Web
 
 <p align="center">
-  <img src="assets/screenshots/dashboard.png" alt="Dashboard" width="680"/>
-  <br/><em>Dashboard Flask com métricas em tempo real</em>
-</p>
-
-<p align="center">
-  <img src="assets/screenshots/pdf_report.png" alt="PDF Report" width="680"/>
-  <br/><em>Relatório PDF com gráficos embutidos e marca d'água</em>
+  <img src="assets/screenshots/dashboard.png" alt="Dashboard" width="850"/>
+  <br/>
+  <em>Dashboard Flask com métricas em tempo real</em>
 </p>
 
 ---
 
-## ✨ Funcionalidades
+## Relatório PDF
+
+<p align="center">
+  <img src="assets/screenshots/pdf_report.png" alt="PDF Report" width="850"/>
+  <br/>
+  <em>Relatório PDF profissional com gráficos embutidos e marca d'água</em>
+</p>
+
+---
+
+# ✨ Funcionalidades
 
 | Módulo | Descrição |
 |--------|-----------|
-| 🔍 **Scanner** | Detecção automática de sub-rede, gateway, IP, MAC e fabricante via Nmap |
-| 🧠 **Classificador** | 9 categorias de dispositivos com reconhecimento de vendor e keywords |
-| 🖥️ **Host Local** | Auto-reconhecimento do dispositivo que executa o scanner (sem falso positivo) |
-| 📊 **Dashboard** | Painel web Flask com métricas ao vivo: IPs ativos, risco médio, desconhecidos |
-| 📈 **Gráficos** | Pizza por tipo, barras por risco e evolução temporal via Matplotlib |
-| 📄 **PDF Report** | Relatório profissional com capa, tabela, gráficos embutidos e marca d'água |
-| 🗄️ **Histórico** | Persistência em JSON + SQLite para análise de tendências |
-| ⚠️ **Risk Scoring** | Score contextual de 1 a 5 por dispositivo baseado em tipo, vendor e comportamento |
+| 🔍 Scanner de Rede | Descoberta automática de hosts via Nmap |
+| 🌐 Detecção de Gateway | Identificação automática do gateway da rede |
+| 🧠 Classificação Inteligente | Classificação contextual baseada em vendor e comportamento |
+| 🖥️ Dashboard Flask | Visualização web com métricas em tempo real |
+| 📊 Gráficos | Pizza, barras e evolução temporal com Matplotlib |
+| 📄 PDF Profissional | Relatórios executivos com branding e gráficos |
+| 🗄️ Persistência | Histórico em JSON e SQLite |
+| 📡 Integração DD-WRT/OpenWRT | Coleta opcional via SSH em roteadores compatíveis |
+| 🧾 Histórico Temporal | Evolução de dispositivos por scans |
 
 ---
 
-## 🗂️ Estrutura do Projeto
+# 🧠 Como Funciona
 
-```
+O fluxo do InfraInsight segue quatro etapas principais:
+
+```text
+Detectar → Classificar → Priorizar → Reportar
+````
+
+## 1. Descoberta
+
+O sistema identifica hosts ativos na sub-rede local utilizando Nmap.
+
+## 2. Classificação
+
+Os dispositivos são classificados automaticamente por:
+
+* vendor
+* hostname
+* gateway
+* comportamento esperado
+
+## 3. Análise de Risco
+
+Cada host recebe um score contextual de risco.
+
+## 4. Visualização
+
+Os resultados são enviados para:
+
+* dashboard web
+* banco SQLite
+* relatório PDF
+
+---
+
+# 📊 Categorias de Dispositivos
+
+| Categoria              | Descrição                      |
+| ---------------------- | ------------------------------ |
+| `gateway`              | Roteador / gateway             |
+| `computador_conhecido` | PCs e notebooks                |
+| `switch_infra`         | Equipamentos de infraestrutura |
+| `smarttv_streaming`    | TVs e streaming                |
+| `iot_rede`             | Dispositivos IoT               |
+| `camera`               | Câmeras IP                     |
+| `impressora`           | Impressoras                    |
+| `mac_randomizado`      | MAC aleatório                  |
+| `desconhecido`         | Não identificado               |
+
+---
+
+# ⚠️ Risk Scoring
+
+O score varia de:
+
+* **1 → baixo risco**
+* **5 → risco crítico**
+
+A análise considera:
+
+* tipo do dispositivo
+* fabricante
+* MAC randomizado
+* recorrência no histórico
+* classificação desconhecida
+* contexto da rede
+
+---
+
+# 🗂️ Estrutura do Projeto
+
+```text
 InfraInsight/
 │
-├── scanner.py              # Ponto de entrada principal
-├── config.json             # Configurações (vendors, keywords, thresholds)
+├── scanner.py
+├── config.json
 ├── requirements.txt
 ├── README.md
 │
 ├── modulos/
-│   ├── classificador.py    # Classificação por tipo de dispositivo
-│   ├── host_local.py       # Auto-detecção do host executando o scanner
-│   ├── graph_generator.py  # Gráficos matplotlib (pizza, barras, evolução)
-│   └── vendor_intelligence.py
+│   ├── classificador.py
+│   ├── ddwrt.py
+│   ├── graph_generator.py
+│   ├── host_local.py
+│   ├── vendor_intelligence.py
+│   └── risk_scoring.py
 │
 ├── dashboard/
-│   ├── app.py              # Servidor Flask
+│   ├── app.py
 │   ├── templates/
 │   └── static/
 │
 ├── reports/
-│   ├── pdf_report.py       # Gerador de PDF com marca d'água e gráficos
-│   └── graficos/           # PNGs gerados automaticamente por scan
+│   ├── pdf_report.py
+│   └── graficos/
 │
-└── assets/
-    ├── logo.png
-    ├── logo_vertical.png
-    └── banner.png
+├── storage/
+│   └── infrainsight.db
+│
+├── assets/
+│   ├── logo.png
+│   ├── logo_vertical.png
+│   ├── banner.png
+│   └── screenshots/
+│
+└── historico_dispositivos.json
 ```
 
 ---
 
-## 🚀 Instalação
+# 🚀 Instalação
 
-### Pré-requisitos
+## Pré-requisitos
 
-- Python 3.10+
-- `nmap` instalado no sistema
+### Linux (Ubuntu/Debian)
 
 ```bash
-# Ubuntu / Debian
-sudo apt install nmap
-
-# macOS
-brew install nmap
+sudo apt update
+sudo apt install nmap python3-venv
 ```
 
-### Setup
+---
+
+## ⚙️ Setup
+
+### 1. Clone o repositório
 
 ```bash
-# 1. Clone o repositório
-git clone https://github.com/seu-usuario/infrainsight.git
-cd infrainsight
+git clone https://github.com/britox-x/InfraInsight.git
+cd InfraInsight
+```
 
-# 2. Crie o ambiente virtual
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+### 2. Crie o ambiente virtual
 
-# 3. Instale as dependências
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### 3. Instale as dependências
+
+```bash
 pip install -r requirements.txt
 ```
 
 ---
 
-## ▶️ Uso
+# ▶️ Uso
 
-### Scanner principal
+## Executar Scanner
 
 ```bash
-# Executar scan completo
 sudo python scanner.py
-
-# O relatório PDF é gerado automaticamente em reports/
 ```
 
-### Dashboard web
+---
+
+## Executar Dashboard
 
 ```bash
 cd dashboard
 python app.py
-# Acesse: http://localhost:5000
+```
+
+Acesse:
+
+```text
+http://localhost:5000
 ```
 
 ---
 
-## 📦 Dependências
+# 📄 Relatórios PDF
 
+O sistema gera automaticamente relatórios PDF contendo:
+
+* capa executiva
+* inventário de dispositivos
+* gráficos
+* resumo estatístico
+* marca d'água
+* branding visual
+
+Os relatórios ficam em:
+
+```text
+reports/
 ```
-nmap
-python-nmap
-flask
-reportlab
-matplotlib
-Pillow
-sqlite3   # nativo Python
-```
-
-Instale tudo com:
-
-```bash
-pip install -r requirements.txt
-```
 
 ---
 
-## 📊 Categorias de Dispositivos
+# 📈 Dashboard
 
-| Tipo | Descrição |
-|------|-----------|
-| `gateway` | Roteador / gateway da rede |
-| `computador_conhecido` | PC, notebook, host local reconhecido |
-| `switch_infra` | Switches e equipamentos de infraestrutura |
-| `smarttv_streaming` | Smart TVs, Chromecast, Fire TV |
-| `iot_rede` | Dispositivos IoT (câmeras, sensores, ESP32) |
-| `camera` | Câmeras IP e de segurança |
-| `impressora` | Impressoras de rede |
-| `mac_randomizado` | Dispositivos com MAC address randomizado |
-| `desconhecido` | Dispositivo não identificado |
+O painel web exibe:
+
+* IPs ativos
+* risco médio
+* desconhecidos
+* gráficos
+* histórico temporal
+* resumo da rede
 
 ---
 
-## ⚠️ Risk Scoring
+# 🗄️ Persistência
 
-O risco é calculado de **1 (baixo)** a **5 (crítico)** com base em:
+O projeto utiliza:
 
-- Tipo do dispositivo
-- Fabricante (vendor) reconhecido ou desconhecido
-- Presença no histórico de scans anteriores
-- MAC randomizado (indicativo de evasão)
-- Dispositivos do tipo `desconhecido` recebem score elevado automaticamente
-
----
-
-## 🛣️ Roadmap
-
-- [x] Scanner com detecção de sub-rede e gateway
-- [x] Classificador inteligente de dispositivos
-- [x] Auto-reconhecimento do host local
-- [x] Dashboard Flask com métricas
-- [x] Geração de gráficos matplotlib
-- [x] PDF com gráficos embutidos e marca d'água
-- [ ] Vendor Intelligence local (base offline de fabricantes)
-- [ ] Alertas por e-mail em novo dispositivo detectado
-- [ ] Docker Compose com InfluxDB + Grafana
-- [ ] Suporte a múltiplas sub-redes simultâneas
+| Tecnologia | Uso                   |
+| ---------- | --------------------- |
+| SQLite     | Histórico persistente |
+| JSON       | Evolução temporal     |
+| Matplotlib | Geração de gráficos   |
+| ReportLab  | Relatórios PDF        |
 
 ---
 
-## 🤝 Contribuindo
+# 📦 Dependências Principais
 
-Pull requests são bem-vindos! Para mudanças grandes, abra uma issue antes para discutir o que você gostaria de mudar.
+* Flask
+* python-nmap
+* matplotlib
+* reportlab
+* Pillow
+* sqlite3
+* python-dotenv
 
 ---
 
-## 📄 Licença
+# 🧪 Compatibilidade
 
-MIT License — veja [LICENSE](LICENSE) para mais detalhes.
+O InfraInsight funciona em:
+
+✅ Redes domésticas
+✅ Home Labs
+✅ Pequenas redes corporativas
+✅ DD-WRT
+✅ OpenWRT
+✅ Gateways Linux-based
+✅ Fallback automático via Nmap
+
+---
+
+# 🛣️ Roadmap
+
+## MVP Atual
+
+* [x] Scanner de rede
+* [x] Descoberta automática de hosts
+* [x] Classificação inteligente
+* [x] Risk scoring
+* [x] Dashboard Flask
+* [x] Persistência SQLite
+* [x] Relatórios PDF
+* [x] Gráficos automáticos
+* [x] Branding visual
+
+---
+
+## Próximas Versões
+
+* [ ] Alertas em tempo real
+* [ ] Múltiplas sub-redes
+* [ ] API REST
+* [ ] Docker Compose
+* [ ] Exportação CSV
+* [ ] Fingerprinting avançado
+* [ ] Vendor intelligence offline
+
+---
+
+# 🎓 Objetivo Acadêmico
+
+O InfraInsight também é utilizado como projeto acadêmico/TCC focado em:
+
+* observabilidade
+* segurança
+* redes
+* automação
+* análise contextual
+
+---
+
+# 💼 Aplicações
+
+* Inventário de rede
+* Home labs
+* Ambientes educacionais
+* Pequenas empresas
+* Observabilidade local
+
+---
+
+# 🤝 Contribuição
+
+Pull requests são bem-vindos.
+
+Para mudanças maiores:
+
+* abra uma issue
+* descreva a proposta
+* explique o objetivo da alteração
+
+---
+
+# 📄 Licença
+
+MIT License
+
+---
+
+# 👨‍💻 Autor
+
+Desenvolvido por:
+
+**Matheus Brito**
 
 ---
 
 <p align="center">
-  Feito com 📡 por <strong>InfraInsight</strong> — <em>Gestão · Observabilidade · Análise de Redes</em>
+  <strong>Antena InfraInsight</strong><br/>
+  <em>Visibilidade Inteligente Para Sua Rede</em>
 </p>
+```

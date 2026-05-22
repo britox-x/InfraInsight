@@ -1,230 +1,294 @@
+<!-- dashboard/templates/index.html - Versão simplificada -->
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>InfraInsight Dashboard</title>
-
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * {
-            box-sizing: border-box;
-        }
-
+        * { box-sizing: border-box; }
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             margin: 0;
-            padding: 30px;
-            background: #f4f6f9;
-            color: #222;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
         }
-
-        h1, h2 {
-            margin-bottom: 20px;
-        }
-
+        .container { max-width: 1400px; margin: 0 auto; }
         .header {
-            margin-bottom: 30px;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-
+        h1 { margin: 0 0 5px 0; color: #333; }
+        .subtitle { color: #666; margin: 0; }
         .cards-container {
-            display: flex;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
-
         .card {
             background: white;
             padding: 20px;
             border-radius: 10px;
-            min-width: 200px;
-            flex: 1;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
         }
-
+        .card:hover { transform: translateY(-5px); }
         .card h3 {
-            margin-top: 0;
-            font-size: 16px;
-            color: #555;
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
         }
-
-        .card p {
-            font-size: 28px;
-            margin: 10px 0 0;
+        .card .value {
+            font-size: 32px;
             font-weight: bold;
+            color: #333;
         }
-
+        .risk-low { color: #10b981; }
+        .risk-medium { color: #f59e0b; }
+        .risk-high { color: #ef4444; }
+        .risk-critical { color: #7f1d1d; }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .chart-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .chart-card h3 { margin: 0 0 15px 0; color: #333; }
+        canvas { max-height: 300px; }
         .details-card {
             background: white;
-            padding: 25px;
+            padding: 20px;
             border-radius: 10px;
             margin-bottom: 30px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-
-        .details-card p {
-            margin: 8px 0;
-            line-height: 1.5;
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
         }
-
-        .alert {
-            background: #fff3f3;
-            border-left: 5px solid red;
-            padding: 15px;
-            margin-bottom: 30px;
-            border-radius: 8px;
-            font-weight: bold;
-            color: #900;
+        .detail-item {
+            padding: 10px;
+            background: #f9fafb;
+            border-radius: 5px;
         }
-
-        .risk-low {
-            color: green;
-            font-weight: bold;
+        .detail-item strong {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
         }
-
-        .risk-medium {
-            color: orange;
-            font-weight: bold;
-        }
-
-        .risk-high {
-            color: red;
-            font-weight: bold;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
+        .detail-item .value { font-size: 18px; font-weight: bold; color: #333; }
+        .table-card {
             background: white;
+            padding: 20px;
             border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow-x: auto;
         }
-
+        table { width: 100%; border-collapse: collapse; }
         th {
             background: #1f2937;
             color: white;
-            padding: 14px;
-            text-align: center;
-        }
-
-        td {
             padding: 12px;
-            border-bottom: 1px solid #ddd;
-            text-align: center;
+            text-align: left;
+            font-weight: 600;
         }
-
-        tr:hover {
-            background: #f9fafb;
+        td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
+        tr:hover { background: #f9fafb; }
+        .nav-links { margin-top: 15px; }
+        .nav-link {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-right: 10px;
+            font-size: 14px;
         }
-
-        @media (max-width: 768px) {
-            .cards-container {
-                flex-direction: column;
-            }
-
-            .card {
-                width: 100%;
-            }
-
-            table {
-                display: block;
-                overflow-x: auto;
-            }
-        }
+        .nav-link:hover { background: #5a67d8; }
+        @media (max-width: 768px) { .charts-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
-
-    <div class="header">
-        <h1>InfraInsight Dashboard</h1>
-        <p>Monitoramento de rede local • Visão atual + histórico</p>
-    </div>
-
-    {% if latest_scan.desconhecidos > 0 %}
-    <div class="alert">
-        ALERTA: Existem {{ latest_scan.desconhecidos }} dispositivo(s) desconhecido(s) na rede.
-    </div>
-    {% endif %}
-
-    <div class="cards-container">
-        <div class="card">
-            <h3>Total de scans</h3>
-            <p>{{ total_scans }}</p>
+    <div class="container">
+        <div class="header">
+            <h1>🔒 InfraInsight Dashboard</h1>
+            <p class="subtitle">Monitoramento de Segurança de Rede Local</p>
+            <div class="nav-links">
+                <a href="/" class="nav-link">📊 Dashboard</a>
+                <a href="/history" class="nav-link">📜 Histórico</a>
+            </div>
         </div>
 
-        <div class="card">
-            <h3>IPs ativos</h3>
-            <p>{{ latest_scan.ips_ativos }}</p>
+        <div class="cards-container">
+            <div class="card">
+                <h3>Total de Scans</h3>
+                <div class="value">{{ total_scans }}</div>
+            </div>
+            <div class="card">
+                <h3>Dispositivos Ativos</h3>
+                <div class="value">{{ latest_scan.ips_ativos }}</div>
+            </div>
+            <div class="card">
+                <h3>Desconhecidos</h3>
+                <div class="value">{{ latest_scan.desconhecidos }}</div>
+            </div>
+            <div class="card">
+                <h3>Risco Médio</h3>
+                <div class="value {% if latest_scan.risco_medio <= 2 %}risk-low{% elif latest_scan.risco_medio <= 5 %}risk-medium{% elif latest_scan.risco_medio <= 7 %}risk-high{% else %}risk-critical{% endif %}">
+                    {{ "%.1f"|format(latest_scan.risco_medio) }}/10
+                </div>
+            </div>
         </div>
 
-        <div class="card">
-            <h3>Desconhecidos</h3>
-            <p>{{ latest_scan.desconhecidos }}</p>
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>📈 Evolução do Risco</h3>
+                <canvas id="riskChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>🥧 Distribuição</h3>
+                <canvas id="distributionChart"></canvas>
+            </div>
         </div>
 
-        <div class="card">
-            <h3>Novos dispositivos</h3>
-            <p>{{ latest_scan.novos_dispositivos }}</p>
+        <div class="details-card">
+            <h2>📋 Detalhes do Último Scan</h2>
+            <div class="details-grid">
+                <div class="detail-item">
+                    <strong>Data/Hora</strong>
+                    <div class="value">{{ latest_scan.timestamp[:19] if latest_scan.timestamp else 'N/A' }}</div>
+                </div>
+                <div class="detail-item">
+                    <strong>Ambiente</strong>
+                    <div class="value">{{ latest_scan.ambiente }}</div>
+                </div>
+                <div class="detail-item">
+                    <strong>Uso da Rede</strong>
+                    <div class="value">{{ "%.1f"|format(latest_scan.uso) }}%</div>
+                </div>
+                <div class="detail-item">
+                    <strong>MAC Randomizados</strong>
+                    <div class="value">{{ latest_scan.mac_randomizados }}</div>
+                </div>
+                <div class="detail-item">
+                    <strong>Recomendação</strong>
+                    <div class="value">{{ latest_scan.recomendacao }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <h2>📊 Histórico de Scans</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Dispositivos</th>
+                        <th>Uso</th>
+                        <th>Risco</th>
+                        <th>Desconhecidos</th>
+                        <th>MAC Rand</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for scan in recent_scans %}
+                    <tr>
+                        <td>{{ scan.timestamp[:19] if scan.timestamp else 'N/A' }}</td>
+                        <td>{{ scan.ips_ativos }}</td>
+                        <td>{{ "%.1f"|format(scan.uso) }}%</td>
+                        <td class="{% if scan.risco_medio <= 2 %}risk-low{% elif scan.risco_medio <= 5 %}risk-medium{% elif scan.risco_medio <= 7 %}risk-high{% else %}risk-critical{% endif %}">
+                            {{ "%.1f"|format(scan.risco_medio) }}/10
+                        </td>
+                        <td>{{ scan.desconhecidos }}</td>
+                        <td>{{ scan.mac_randomizados }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <div class="details-card">
-        <h2>Último Scan</h2>
-
-        <p><strong>Timestamp:</strong> {{ latest_scan.timestamp }}</p>
-        <p><strong>Ambiente:</strong> {{ latest_scan.ambiente }}</p>
-        <p><strong>Wi-Fi:</strong> {{ latest_scan.wifi }}</p>
-        <p><strong>Sub-rede:</strong> {{ latest_scan.subrede }}</p>
-        <p><strong>Gateway:</strong> {{ latest_scan.gateway }}</p>
-        <p><strong>Uso:</strong> {{ latest_scan.uso }}%</p>
-
-        <p>
-            <strong>Risco médio:</strong>
-            <span class="
-                {% if latest_scan.risco_medio > 7 %}
-                    risk-high
-                {% elif latest_scan.risco_medio > 4 %}
-                    risk-medium
-                {% else %}
-                    risk-low
-                {% endif %}
-            ">
-                {{ latest_scan.risco_medio }}
-            </span>
-        </p>
-
-        <p><strong>MACs randomizados:</strong> {{ latest_scan.mac_randomizados }}</p>
-        <p><strong>Recomendação:</strong> {{ latest_scan.recomendacao }}</p>
-    </div>
-
-    <h2>Histórico recente</h2>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Timestamp</th>
-                <th>IPs Ativos</th>
-                <th>Uso %</th>
-                <th>Risco Médio</th>
-                <th>Desconhecidos</th>
-                <th>Novos Dispositivos</th>
-            </tr>
-        </thead>
-
-        <tbody>
+    <script>
+        // Dados para os gráficos
+        const recentScans = [
             {% for scan in recent_scans %}
-            <tr>
-                <td>{{ scan.timestamp }}</td>
-                <td>{{ scan.ips_ativos }}</td>
-                <td>{{ scan.uso }}</td>
-                <td>{{ scan.risco_medio }}</td>
-                <td>{{ scan.desconhecidos }}</td>
-                <td>{{ scan.novos_dispositivos }}</td>
-            </tr>
+            {
+                timestamp: "{{ scan.timestamp }}",
+                risco_medio: {{ scan.risco_medio }},
+                ips_ativos: {{ scan.ips_ativos }}
+            }{% if not loop.last %},{% endif %}
             {% endfor %}
-        </tbody>
-    </table>
-
+        ];
+        
+        // Gráfico de evolução
+        if (recentScans.length > 0) {
+            const reversed = [...recentScans].reverse();
+            const ctx1 = document.getElementById('riskChart').getContext('2d');
+            new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: reversed.map(s => s.timestamp.slice(5, 16)),
+                    datasets: [{
+                        label: 'Risco Médio',
+                        data: reversed.map(s => s.risco_medio),
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Dispositivos',
+                        data: reversed.map(s => s.ips_ativos),
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true
+                }
+            });
+        }
+        
+        // Gráfico de distribuição
+        const normalCount = {{ latest_scan.ips_ativos }} - {{ latest_scan.desconhecidos }} - {{ latest_scan.mac_randomizados }};
+        const ctx2 = document.getElementById('distributionChart').getContext('2d');
+        new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+                labels: ['Normais', 'Desconhecidos', 'MAC Rand'],
+                datasets: [{
+                    data: [normalCount, {{ latest_scan.desconhecidos }}, {{ latest_scan.mac_randomizados }}],
+                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    </script>
 </body>
 </html>

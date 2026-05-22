@@ -28,24 +28,27 @@ from reportlab.pdfgen import canvas as rl_canvas
 # ── Tenta importar gerador de gráficos ──────────────────────────────────────
 try:
     import sys
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    sys.path.insert(
+        0, os.path.dirname(
+            os.path.dirname(
+                os.path.abspath(__file__))))
     from reports.graph_generator import gerar_todos
     GRAFICOS_OK = True
 except ImportError:
     GRAFICOS_OK = False
 
 # ── Paleta de cores ──────────────────────────────────────────────────────────
-AZUL_ESCURO   = colors.HexColor('#0D1117')
-AZUL_MEDIO    = colors.HexColor('#161B22')
-AZUL_BORDA    = colors.HexColor('#30363D')
+AZUL_ESCURO = colors.HexColor('#0D1117')
+AZUL_MEDIO = colors.HexColor('#161B22')
+AZUL_BORDA = colors.HexColor('#30363D')
 AZUL_PRIMARIO = colors.HexColor('#185FA5')
-AZUL_CLARO    = colors.HexColor('#378ADD')
-VERDE         = colors.HexColor('#1D9E75')
-VERMELHO      = colors.HexColor('#E24B4A')
-AMARELO       = colors.HexColor('#EF9F27')
-TEXTO_CLARO   = colors.HexColor('#E6EDF3')
-TEXTO_MUTED   = colors.HexColor('#8B949E')
-BRANCO        = colors.white
+AZUL_CLARO = colors.HexColor('#378ADD')
+VERDE = colors.HexColor('#1D9E75')
+VERMELHO = colors.HexColor('#E24B4A')
+AMARELO = colors.HexColor('#EF9F27')
+TEXTO_CLARO = colors.HexColor('#E6EDF3')
+TEXTO_MUTED = colors.HexColor('#8B949E')
+BRANCO = colors.white
 
 # ── Risco → cor ─────────────────────────────────────────────────────────────
 RISCO_COR = {
@@ -57,22 +60,20 @@ RISCO_COR = {
 }
 
 PASTA_REPORTS = 'reports'
-PASTA_ASSETS  = 'assets'
+PASTA_ASSETS = 'assets'
 
 
 # ════════════════════════════════════════════════════════════════════════════
 # Canvas builder — cabeçalho, rodapé e marca d'água em TODAS as páginas
 # ════════════════════════════════════════════════════════════════════════════
-
 class InfraInsightCanvas(rl_canvas.Canvas):
-    """Canvas customizado: aplica marca d'água, cabeçalho e rodapé automaticamente."""
 
     def __init__(self, filename, logo_path=None, timestamp='', **kwargs):
         super().__init__(filename, **kwargs)
         self._saved_page_states = []
         self._logo_path = logo_path
         self._timestamp = timestamp
-        self._page_num  = 0
+        self._page_num = 0
 
     def showPage(self):
         self._saved_page_states.append(dict(self.__dict__))
@@ -80,13 +81,16 @@ class InfraInsightCanvas(rl_canvas.Canvas):
 
     def save(self):
         num_pages = len(self._saved_page_states)
-        for state in self._saved_page_states:
+
+        for page_num, state in enumerate(self._saved_page_states, start=1):
             self.__dict__.update(state)
-            self._page_num += 1
+
             self._desenhar_watermark()
             self._desenhar_header()
-            self._desenhar_footer(self._page_num, num_pages)
+            self._desenhar_footer(page_num, num_pages)
+
             super().showPage()
+
         super().save()
 
     def _desenhar_watermark(self):
@@ -137,7 +141,10 @@ class InfraInsightCanvas(rl_canvas.Canvas):
         self.drawString(1 * cm, h - 0.75 * cm, 'ANTENA INFRAINSIGHT')
         self.setFillColor(TEXTO_MUTED)
         self.setFont('Helvetica', 7)
-        self.drawRightString(w - 1 * cm, h - 0.75 * cm, 'Visibilidade Inteligente Para Sua Rede')
+        self.drawRightString(
+            w - 1 * cm,
+            h - 0.75 * cm,
+            'Visibilidade Inteligente Para Sua Rede')
         self.restoreState()
 
     def _desenhar_footer(self, num, total):
@@ -150,7 +157,10 @@ class InfraInsightCanvas(rl_canvas.Canvas):
         self.setFillColor(TEXTO_MUTED)
         self.setFont('Helvetica', 7)
         self.drawString(1 * cm, 0.65 * cm, f'Gerado em: {self._timestamp}')
-        self.drawCentredString(w / 2, 0.65 * cm, 'Relatório Confidencial — InfraInsight')
+        self.drawCentredString(
+            w / 2,
+            0.65 * cm,
+            'Relatório Confidencial — InfraInsight')
         self.drawRightString(w - 1 * cm, 0.65 * cm, f'Página {num} / {total}')
         self.restoreState()
 
@@ -163,29 +173,29 @@ def _estilos():
     base = getSampleStyleSheet()
 
     titulo_capa = ParagraphStyle('TituloCapa',
-        fontName='Helvetica-Bold', fontSize=28,
-        textColor=TEXTO_CLARO, alignment=TA_CENTER, spaceAfter=6)
+                                 fontName='Helvetica-Bold', fontSize=28,
+                                 textColor=TEXTO_CLARO, alignment=TA_CENTER, spaceAfter=6)
 
     subtitulo_capa = ParagraphStyle('SubtituloCapa',
-        fontName='Helvetica', fontSize=13,
-        textColor=AZUL_CLARO, alignment=TA_CENTER, spaceAfter=4)
+                                    fontName='Helvetica', fontSize=13,
+                                    textColor=AZUL_CLARO, alignment=TA_CENTER, spaceAfter=4)
 
     secao = ParagraphStyle('Secao',
-        fontName='Helvetica-Bold', fontSize=13,
-        textColor=AZUL_CLARO, spaceBefore=16, spaceAfter=6,
-        borderPadding=(0, 0, 4, 0))
+                           fontName='Helvetica-Bold', fontSize=13,
+                           textColor=AZUL_CLARO, spaceBefore=16, spaceAfter=6,
+                           borderPadding=(0, 0, 4, 0))
 
     corpo = ParagraphStyle('Corpo',
-        fontName='Helvetica', fontSize=9,
-        textColor=TEXTO_CLARO, leading=14, spaceAfter=4)
+                           fontName='Helvetica', fontSize=9,
+                           textColor=TEXTO_CLARO, leading=14, spaceAfter=4)
 
     legenda = ParagraphStyle('Legenda',
-        fontName='Helvetica', fontSize=8,
-        textColor=TEXTO_MUTED, alignment=TA_CENTER, spaceAfter=10)
+                             fontName='Helvetica', fontSize=8,
+                             textColor=TEXTO_MUTED, alignment=TA_CENTER, spaceAfter=10)
 
     rodape_info = ParagraphStyle('RodapeInfo',
-        fontName='Helvetica', fontSize=8,
-        textColor=TEXTO_MUTED, alignment=TA_CENTER)
+                                 fontName='Helvetica', fontSize=8,
+                                 textColor=TEXTO_MUTED, alignment=TA_CENTER)
 
     return {
         'titulo_capa': titulo_capa,
@@ -201,42 +211,51 @@ def _estilos():
 # Blocos de conteúdo
 # ════════════════════════════════════════════════════════════════════════════
 
-def _capa(estilos, total_dispositivos, total_desconhecidos, risco_medio, timestamp_legivel):
+def _capa(estilos, total_dispositivos, total_desconhecidos,
+          risco_medio, timestamp_legivel):
     """Bloco de capa do relatório."""
     itens = []
     itens.append(Spacer(1, 3.5 * cm))
 
     itens.append(Paragraph('ANTENA INFRAINSIGHT', estilos['titulo_capa']))
-    itens.append(Paragraph('Relatório de Scan de Rede', estilos['subtitulo_capa']))
+    itens.append(
+        Paragraph(
+            'Relatório de Scan de Rede',
+            estilos['subtitulo_capa']))
     itens.append(Spacer(1, 0.4 * cm))
     itens.append(HRFlowable(width='80%', thickness=1.5, color=AZUL_PRIMARIO,
-                             hAlign='CENTER', spaceAfter=20))
+                            hAlign='CENTER', spaceAfter=20))
     itens.append(Spacer(1, 0.6 * cm))
 
     # Cards de métricas na capa
     dados_metricas = [
         ['Dispositivos\nDetectados', 'Desconhecidos', 'Risco\nMédio'],
-        [str(total_dispositivos), str(total_desconhecidos), f'{risco_medio:.1f}'],
+        [str(total_dispositivos),
+         str(total_desconhecidos),
+            f'{risco_medio:.1f}'],
     ]
     t = Table(dados_metricas, colWidths=[4.5 * cm, 4.5 * cm, 4.5 * cm],
               rowHeights=[0.7 * cm, 1.2 * cm])
     t.setStyle(TableStyle([
-        ('BACKGROUND',   (0, 0), (-1, 0), AZUL_MEDIO),
-        ('BACKGROUND',   (0, 1), (-1, 1), AZUL_ESCURO),
-        ('TEXTCOLOR',    (0, 0), (-1, 0), TEXTO_MUTED),
-        ('TEXTCOLOR',    (0, 1), (-1, 1), AZUL_CLARO),
-        ('FONTNAME',     (0, 0), (-1, 0), 'Helvetica'),
-        ('FONTNAME',     (0, 1), (-1, 1), 'Helvetica-Bold'),
-        ('FONTSIZE',     (0, 0), (-1, 0), 7),
-        ('FONTSIZE',     (0, 1), (-1, 1), 18),
-        ('ALIGN',        (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN',       (0, 0), (-1, -1), 'MIDDLE'),
-        ('GRID',         (0, 0), (-1, -1), 0.5, AZUL_BORDA),
+        ('BACKGROUND', (0, 0), (-1, 0), AZUL_MEDIO),
+        ('BACKGROUND', (0, 1), (-1, 1), AZUL_ESCURO),
+        ('TEXTCOLOR', (0, 0), (-1, 0), TEXTO_MUTED),
+        ('TEXTCOLOR', (0, 1), (-1, 1), AZUL_CLARO),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica'),
+        ('FONTNAME', (0, 1), (-1, 1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 7),
+        ('FONTSIZE', (0, 1), (-1, 1), 18),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -1), 0.5, AZUL_BORDA),
         ('ROUNDEDCORNERS', [4]),
     ]))
     itens.append(t)
     itens.append(Spacer(1, 0.6 * cm))
-    itens.append(Paragraph(f'Gerado em: {timestamp_legivel}', estilos['rodape_info']))
+    itens.append(
+        Paragraph(
+            f'Gerado em: {timestamp_legivel}',
+            estilos['rodape_info']))
     itens.append(PageBreak())
     return itens
 
@@ -245,7 +264,12 @@ def _tabela_dispositivos(dispositivos, estilos):
     """Tabela completa de dispositivos com cores por nível de risco."""
     itens = []
     itens.append(Paragraph('Inventário de Dispositivos', estilos['secao']))
-    itens.append(HRFlowable(width='100%', thickness=0.5, color=AZUL_BORDA, spaceAfter=8))
+    itens.append(
+        HRFlowable(
+            width='100%',
+            thickness=0.5,
+            color=AZUL_BORDA,
+            spaceAfter=8))
 
     cabecalho = ['IP', 'Hostname', 'MAC', 'Fabricante', 'Tipo', 'Risco']
     dados = [cabecalho]
@@ -261,22 +285,22 @@ def _tabela_dispositivos(dispositivos, estilos):
             str(risco),
         ])
 
-    col_w = [2.8*cm, 3.5*cm, 3.5*cm, 3.2*cm, 3.0*cm, 1.2*cm]
+    col_w = [2.8 * cm, 3.5 * cm, 3.5 * cm, 3.2 * cm, 3.0 * cm, 1.2 * cm]
     t = Table(dados, colWidths=col_w, repeatRows=1)
 
     style_cmds = [
-        ('BACKGROUND',  (0, 0), (-1, 0), AZUL_PRIMARIO),
-        ('TEXTCOLOR',   (0, 0), (-1, 0), BRANCO),
-        ('FONTNAME',    (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE',    (0, 0), (-1, 0), 8),
-        ('FONTNAME',    (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE',    (0, 1), (-1, -1), 7.5),
-        ('TEXTCOLOR',   (0, 1), (-1, -1), TEXTO_CLARO),
-        ('ALIGN',       (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN',      (0, 0), (-1, -1), 'MIDDLE'),
+        ('BACKGROUND', (0, 0), (-1, 0), AZUL_PRIMARIO),
+        ('TEXTCOLOR', (0, 0), (-1, 0), BRANCO),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 8),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 7.5),
+        ('TEXTCOLOR', (0, 1), (-1, -1), TEXTO_CLARO),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [AZUL_ESCURO, AZUL_MEDIO]),
-        ('GRID',        (0, 0), (-1, -1), 0.4, AZUL_BORDA),
-        ('TOPPADDING',  (0, 0), (-1, -1), 4),
+        ('GRID', (0, 0), (-1, -1), 0.4, AZUL_BORDA),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
     ]
 
@@ -285,8 +309,10 @@ def _tabela_dispositivos(dispositivos, estilos):
         try:
             nivel = int(row[5])
             cor = RISCO_COR.get(nivel, TEXTO_CLARO)
-            style_cmds.append(('TEXTCOLOR', (5, linha_idx), (5, linha_idx), cor))
-            style_cmds.append(('FONTNAME',  (5, linha_idx), (5, linha_idx), 'Helvetica-Bold'))
+            style_cmds.append(
+                ('TEXTCOLOR', (5, linha_idx), (5, linha_idx), cor))
+            style_cmds.append(
+                ('FONTNAME', (5, linha_idx), (5, linha_idx), 'Helvetica-Bold'))
         except (ValueError, IndexError):
             pass
 
@@ -300,7 +326,12 @@ def _secao_graficos(caminhos_graficos, estilos):
     itens = []
     itens.append(PageBreak())
     itens.append(Paragraph('Análise Visual', estilos['secao']))
-    itens.append(HRFlowable(width='100%', thickness=0.5, color=AZUL_BORDA, spaceAfter=12))
+    itens.append(
+        HRFlowable(
+            width='100%',
+            thickness=0.5,
+            color=AZUL_BORDA,
+            spaceAfter=12))
 
     largura_pg = A4[0] - 4 * cm  # margem total 2cm cada lado
 
@@ -310,7 +341,8 @@ def _secao_graficos(caminhos_graficos, estilos):
         try:
             img = Image(caminho, width=largura, height=largura * 0.55,
                         kind='proportional')
-            return [img, Paragraph(legenda_texto, estilos['legenda']), Spacer(1, 0.4 * cm)]
+            return [img, Paragraph(
+                legenda_texto, estilos['legenda']), Spacer(1, 0.4 * cm)]
         except Exception:
             return []
 
@@ -340,7 +372,12 @@ def _secao_resumo(dispositivos, estilos):
     itens = []
     itens.append(PageBreak())
     itens.append(Paragraph('Resumo Estatístico', estilos['secao']))
-    itens.append(HRFlowable(width='100%', thickness=0.5, color=AZUL_BORDA, spaceAfter=8))
+    itens.append(
+        HRFlowable(
+            width='100%',
+            thickness=0.5,
+            color=AZUL_BORDA,
+            spaceAfter=8))
 
     # Contagem por tipo
     contagem_tipo = {}
@@ -363,33 +400,33 @@ def _secao_resumo(dispositivos, estilos):
     ]
 
     def _mini_tabela(dados, cor_header):
-        t = Table(dados, colWidths=[6*cm, 3*cm])
+        t = Table(dados, colWidths=[6 * cm, 3 * cm])
         t.setStyle(TableStyle([
-            ('BACKGROUND',   (0, 0), (-1, 0), cor_header),
-            ('TEXTCOLOR',    (0, 0), (-1, 0), BRANCO),
-            ('FONTNAME',     (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE',     (0, 0), (-1, -1), 8),
-            ('TEXTCOLOR',    (0, 1), (-1, -1), TEXTO_CLARO),
-            ('FONTNAME',     (0, 1), (-1, -1), 'Helvetica'),
+            ('BACKGROUND', (0, 0), (-1, 0), cor_header),
+            ('TEXTCOLOR', (0, 0), (-1, 0), BRANCO),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('TEXTCOLOR', (0, 1), (-1, -1), TEXTO_CLARO),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [AZUL_ESCURO, AZUL_MEDIO]),
-            ('GRID',         (0, 0), (-1, -1), 0.4, AZUL_BORDA),
-            ('ALIGN',        (0, 0), (-1, -1), 'CENTER'),
-            ('VALIGN',       (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING',   (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING',(0, 0), (-1, -1), 4),
+            ('GRID', (0, 0), (-1, -1), 0.4, AZUL_BORDA),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
         ]))
         return t
 
     linha_tabelas = Table(
         [[_mini_tabela(dados_tipo, AZUL_PRIMARIO),
           _mini_tabela(dados_risco, colors.HexColor('#D85A30'))]],
-        colWidths=[9.5*cm, 9.5*cm],
+        colWidths=[9.5 * cm, 9.5 * cm],
         hAlign='LEFT'
     )
     linha_tabelas.setStyle(TableStyle([
-        ('ALIGN',  (0, 0), (-1, -1), 'LEFT'),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('LEFTPADDING',  (0, 0), (-1, -1), 0),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
         ('RIGHTPADDING', (0, 0), (-1, -1), 16),
     ]))
     itens.append(linha_tabelas)
@@ -400,7 +437,8 @@ def _secao_resumo(dispositivos, estilos):
 # Função principal
 # ════════════════════════════════════════════════════════════════════════════
 
-def gerar_pdf(dispositivos: list, historico: list = None, nome_arquivo: str = None) -> str:
+def gerar_pdf(dispositivos: list, historico: list = None,
+              nome_arquivo: str = None) -> str:
     """
     Gera o relatório PDF completo do InfraInsight.
 
@@ -415,11 +453,12 @@ def gerar_pdf(dispositivos: list, historico: list = None, nome_arquivo: str = No
     os.makedirs(PASTA_REPORTS, exist_ok=True)
 
     ts = datetime.now()
-    timestamp_fs   = ts.strftime('%Y%m%d_%H%M%S')
-    timestamp_leg  = ts.strftime('%d/%m/%Y %H:%M:%S')
+    timestamp_fs = ts.strftime('%Y%m%d_%H%M%S')
+    timestamp_leg = ts.strftime('%d/%m/%Y %H:%M:%S')
 
     if not nome_arquivo:
-        nome_arquivo = os.path.join(PASTA_REPORTS, f'infrainsight_report_{timestamp_fs}.pdf')
+        nome_arquivo = os.path.join(PASTA_REPORTS,
+                                    f'infrainsight_report_{timestamp_fs}.pdf')
 
     # ── Logo ─────────────────────────────────────────────────────────────
     logo_path = None
@@ -446,8 +485,12 @@ def gerar_pdf(dispositivos: list, historico: list = None, nome_arquivo: str = No
 
     # ── Métricas para a capa ──────────────────────────────────────────────
     total = len(dispositivos)
-    desconhecidos = sum(1 for d in dispositivos if d.get('tipo') == 'desconhecido')
-    riscos = [d.get('risco', 3) for d in dispositivos if isinstance(d.get('risco'), (int, float))]
+    desconhecidos = sum(
+        1 for d in dispositivos if d.get('tipo') == 'desconhecido')
+    riscos = [
+        d.get(
+            'risco', 3) for d in dispositivos if isinstance(
+            d.get('risco'), (int, float))]
     risco_medio = sum(riscos) / len(riscos) if riscos else 0.0
 
     # ── Estilos ───────────────────────────────────────────────────────────
@@ -464,7 +507,8 @@ def gerar_pdf(dispositivos: list, historico: list = None, nome_arquivo: str = No
     )
 
     historia = []
-    historia += _capa(estilos, total, desconhecidos, risco_medio, timestamp_leg)
+    historia += _capa(estilos, total, desconhecidos,
+                      risco_medio, timestamp_leg)
     historia += _tabela_dispositivos(dispositivos, estilos)
     if caminhos_graficos:
         historia += _secao_graficos(caminhos_graficos, estilos)
@@ -478,7 +522,6 @@ def gerar_pdf(dispositivos: list, historico: list = None, nome_arquivo: str = No
         )
     )
 
-    print(f'[InfraInsight] PDF gerado: {nome_arquivo}')
     return nome_arquivo
 
 
@@ -488,21 +531,29 @@ if __name__ == '__main__':
 
     tipos = ['gateway', 'computador_conhecido', 'switch_infra',
              'smarttv_streaming', 'iot_rede', 'desconhecido']
-    vendors = ['TP-Link', 'Intel', 'Apple', 'Samsung', 'Bilian', 'Espressif', 'Unknown']
+    vendors = [
+        'TP-Link',
+        'Intel',
+        'Apple',
+        'Samsung',
+        'Bilian',
+        'Espressif',
+        'Unknown']
 
     dispositivos_teste = []
     for i in range(1, 16):
         dispositivos_teste.append({
-            'ip':       f'192.168.1.{i}',
+            'ip': f'192.168.1.{i}',
             'hostname': f'host-{i:02d}' if i % 3 != 0 else '',
-            'mac':      f'AA:BB:CC:DD:EE:{i:02X}',
-            'vendor':   random.choice(vendors),
-            'tipo':     random.choice(tipos),
-            'risco':    random.randint(1, 5),
+            'mac': f'AA:BB:CC:DD:EE:{i:02X}',
+            'vendor': random.choice(vendors),
+            'tipo': random.choice(tipos),
+            'risco': random.randint(1, 5),
         })
 
     historico_teste = [
-        {'data': f'2025-05-{d:02d} 22:00', 'total_dispositivos': random.randint(10, 18)}
+        {'data': f'2025-05-{d:02d} 22:00',
+            'total_dispositivos': random.randint(10, 18)}
         for d in range(1, 16)
     ]
 
