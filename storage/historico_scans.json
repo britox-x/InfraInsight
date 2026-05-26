@@ -1,0 +1,114 @@
+[
+    {
+        "data": "2026-05-20 11:16:17",
+        "total_dispositivos": 6
+    },
+    {
+        "data": "2026-05-20 11:16:17",
+        "total_dispositivos": 6
+    },
+    {
+        "data": "2026-05-20 11:20:25",
+        "total_dispositivos": 6
+    },
+    {
+        "data": "2026-05-20 11:20:25",
+        "total_dispositivos": 6
+    },
+    {
+        "data": "2026-05-20 11:23:34",
+        "total_dispositivos": 6
+    },
+    {
+        "data": "2026-05-20 11:23:34",
+        "total_dispositivos": 6
+    },
+    {
+        "data": "2026-05-20 11:36:06",
+        "total_dispositivos": 3,
+        "risco_medio": 1.67,
+        "severidades": {
+            "Baixo": 2,
+            "M\u00e9dio": 1,
+            "Alto": 0,
+            "Cr\u00edtico": 0
+        }
+    },
+    {
+        "data": "2026-05-20 11:39:08",
+        "total_dispositivos": 4,
+        "risco_medio": 2.0,
+        "severidades": {
+            "Baixo": 2,
+            "M\u00e9dio": 2,
+            "Alto": 0,
+            "Cr\u00edtico": 0
+        }
+    },
+    {
+        "data": "2026-05-20 12:08:25",
+        "total_dispositivos": 4,
+        "risco_medio": 1.5,
+        "severidades": {
+            "Baixo": 3,
+            "M\u00e9dio": 1,
+            "Alto": 0,
+            "Cr\u00edtico": 0
+        }
+    },
+    {
+        "data": "2026-05-20 20:40:14",
+        "total_dispositivos": 44,
+        "risco_medio": 0.98,
+        "severidades": {
+            "Baixo": 42,
+            "M\u00e9dio": 2,
+            "Alto": 0,
+            "Cr\u00edtico": 0
+        }
+    },
+    {
+        "data": "2026-05-20 21:25:50",
+        "total_dispositivos": 40,
+        "risco_medio": 0.97,
+        "severidades": {
+            "Baixo": 38,
+            "M\u00e9dio": 2,
+            "Alto": 0,
+            "Cr\u00edtico": 0
+        }
+    },
+    {
+        "data": "2026-05-21 08:36:44",
+        "total_dispositivos": 7,
+        "risco_medio": 1.29,
+        "severidades": {
+            "Baixo": 6,
+            "M\u00e9dio": 1,
+            "Alto": 0,
+            "Cr\u00edtico": 0
+        }
+    },
+    {
+        "data": "2026-05-21 09:38:25",
+        "total_dispositivos": 7,
+        "risco_medio": 0.57,
+        "severidades": {
+            "Baixo": 6,
+            "M\u00e9dio": 1,
+            "Alto": 0,
+            "Cr\u00edtico": 0
+        }
+    },
+    {
+        "data": "2026-05-21 09:46:25",
+        "total_dispositivos": 7,
+        "risco_medio": 0.57,
+        "severidades": {
+            "Baixo": 6,
+            "M\u00e9dio": 1,
+            "Alto": 0,
+            "Cr\u00edtico": 0
+        }
+    }
+]

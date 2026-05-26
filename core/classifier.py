@@ -131,3 +131,113 @@ def identificar_tipo_por_mac(mac):
             return tipo
     
     return None
+def classificar_dispositivo_randomizado(mac, hostname=""):
+    """
+    Classifica dispositivos com MAC randomizado baseado em padrões
+    """
+    mac_prefix = mac[:8].upper() if mac else ""
+    hostname = (hostname or "").lower()
+    
+    # Padrões de MAC randomizado por fabricante/família
+    # Android: 46:, 4e:, 5e:, 6a:, 2a:, 3a:, 7a:, 8a:, 9a:
+    android_prefixes = ['46:', '4E:', '5E:', '6A:', '2A:', '3A:', '7A:', '8A:', '9A:', 'AE:', 'BE:', 'CE:', 'DE:', 'EE:', 'FE:']
+    
+    # iOS: 2a:, 4a:, 6a:, 8a:, 9a:, ba:, ca:, da:, ea:, fa:
+    ios_prefixes = ['2A:', '4A:', '6A:', '8A:', '9A:', 'BA:', 'CA:', 'DA:', 'EA:', 'FA:']
+    
+    # Windows: 1e:, 3e:, 5e:, 7e:, 9e:, be:, de:, fe:
+    windows_prefixes = ['1E:', '3E:', '5E:', '7E:', '9E:', 'BE:', 'DE:', 'FE:']
+    
+    # Por hostname
+    if 'android' in hostname or 'xiaomi' in hostname or 'samsung' in hostname:
+        return "mobile/android", 2
+    if 'iphone' in hostname or 'ipad' in hostname or 'apple' in hostname:
+        return "mobile/ios", 2
+    if 'windows' in hostname or 'win' in hostname:
+        return "mobile/windows", 2
+    
+    # Por MAC
+    for prefix in android_prefixes:
+        if mac_prefix.startswith(prefix):
+            return "mobile/android", 2
+    for prefix in ios_prefixes:
+        if mac_prefix.startswith(prefix):
+            return "mobile/ios", 2
+    for prefix in windows_prefixes:
+        if mac_prefix.startswith(prefix):
+            return "mobile/windows", 2
+    
+def classificar_por_porta(open_ports):
+    """
+    Classifica dispositivo baseado nas portas abertas
+    """
+    if not open_ports:
+        return None
+    
+    # Mapeamento de portas para tipo provável
+    portas_para_tipo = {
+        554: "camera_ip",      # RTSP
+        8008: "camera_ip",     # Câmera IP
+        8000: "camera_ip",
+        9100: "impressora",    # JetDirect
+        515: "impressora",     # LPD
+        1883: "iot_mqtt",      # MQTT
+        8883: "iot_mqtt",
+        1900: "smart_device",  # UPnP
+        5353: "smart_device",  # mDNS
+        8200: "smart_tv",      # UPnP Media
+        8009: "chromecast",    # Google Cast
+        7000: "tv",            # UPnP TV
+        5000: "nas",           # Synology/QNAP
+        8088: "router",        # Router admin
+        5001: "nas_https",     # NAS HTTPS
+        32400: "plex",         # Plex Media
+        5050: "iot_hub",       # IoT Hub
+    }
+    
+    for port, tipo in portas_para_tipo.items():
+        if port in open_ports:
+            return tipo
+    
+    # Combinações de portas
+    if 22 in open_ports and 80 in open_ports:
+        return "linux_server"
+    if 3389 in open_ports:
+        return "windows_server"
+    
+    return None
+
+    # Fallback
+    return "mobile/desconhecido", 3
+def classificar_dispositivo_randomizado(mac, hostname=""):
+    """
+    Classifica dispositivos com MAC randomizado baseado em padrões
+    """
+    mac_prefix = mac[:8].upper() if mac else ""
+    hostname = (hostname or "").lower()
+    
+    # Padrões de MAC randomizado por fabricante/família
+    android_prefixes = ['46:', '4E:', '5E:', '6A:', '2A:', '3A:', '7A:', '8A:', '9A:', 'AE:', 'BE:', 'CE:', 'DE:', 'EE:', 'FE:']
+    ios_prefixes = ['2A:', '4A:', '6A:', '8A:', '9A:', 'BA:', 'CA:', 'DA:', 'EA:', 'FA:']
+    windows_prefixes = ['1E:', '3E:', '5E:', '7E:', '9E:', 'BE:', 'DE:', 'FE:']
+    
+    # Por hostname
+    if 'android' in hostname or 'xiaomi' in hostname or 'samsung' in hostname:
+        return "mobile/android", 2
+    if 'iphone' in hostname or 'ipad' in hostname or 'apple' in hostname:
+        return "mobile/ios", 2
+    if 'windows' in hostname or 'win' in hostname:
+        return "mobile/windows", 2
+    
+    # Por MAC
+    for prefix in android_prefixes:
+        if mac_prefix.startswith(prefix):
+            return "mobile/android", 2
+    for prefix in ios_prefixes:
+        if mac_prefix.startswith(prefix):
+            return "mobile/ios", 2
+    for prefix in windows_prefixes:
+        if mac_prefix.startswith(prefix):
+            return "mobile/windows", 2
+    
+    return "mobile/desconhecido", 3

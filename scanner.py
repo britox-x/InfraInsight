@@ -1,3 +1,15 @@
+
+
+
+
+
+
+
+
+
+
+
+
 #!/usr/bin/env python3
 # scanner.py - InfraInsight Network Scanner
 
@@ -6,25 +18,22 @@ import re
 import json
 import os
 import socket
-
-
-# Wi-Fi Scanner
-try:
-    from core.wifi_scanner import scan_wifi_simples, listar_interfaces_wifi, verificar_aircrack
-    WIFI_AVAILABLE = True
-except ImportError:
-    WIFI_AVAILABLE = False
-    print("[INFO] Módulo Wi-Fi não disponível")
-
-
 from datetime import datetime
 
 from core.host_local import obter_host_local
-from core.classifier import classificar_dispositivo
+from core.classifier import classificar_dispositivo, classificar_por_porta, classificar_dispositivo_randomizado
 from core.risk_scorer import calcular_risco_avancado, classificar_severidade, gerar_recomendacoes
 from core.persistence import init_database, salvar_scan, carregar_historico
 from core.graph_generator import gerar_graficos
 from core.utils import obter_mac_por_ip, fabricante_por_mac, detectar_rede, obter_nome_wifi, obter_gateway, detectar_ambiente_por_rede
+
+# Wi-Fi Scanner
+try:
+    from core.wifi_scanner import listar_interfaces_wifi, scan_wifi_simples, scan_wifi_nmcli
+    WIFI_AVAILABLE = True
+except ImportError as e:
+    WIFI_AVAILABLE = False
+    print(f"[INFO] Módulo Wi-Fi não disponível: {e}")
 
 # Configuração
 CONFIG_PATH = "config.json"
@@ -218,6 +227,20 @@ for d in dispositivos:
     )
     d["tipo"] = tipo
     
+    # Se ainda é desconhecido, tentar classificar por portas
+    if d["tipo"] == "desconhecido" and d.get('open_ports'):
+        tipo_por_porta = classificar_por_porta(d['open_ports'])
+        if tipo_por_porta:
+            d["tipo"] = tipo_por_porta
+            print(f"   🔍 Classificado por porta: {d['ip']} → {tipo_por_porta}")
+    
+    # Se é randomizado ou privado, classificar melhor
+    if "privado" in d["fabricante"].lower() or "randomizado" in d["fabricante"].lower():
+        tipo_random, _ = classificar_dispositivo_randomizado(d["mac"], d["nome"])
+        if tipo_random != "mobile/desconhecido":
+            d["tipo"] = tipo_random
+            print(f"   📱 Classificado como móvel: {d['ip']} → {tipo_random}")
+
     # Forçar gateway como roteador
     if d["ip"] == "192.168.0.1" or d["ip"] == gateway:
         d["tipo"] = "roteador"
@@ -268,6 +291,11 @@ print(f"MACs randomizados: {mac_randomizados}")
 print(f"Desconhecidos: {desconhecidos}")
 
 print("\n📱 DISPOSITIVOS DETECTADOS:")
+
+print("\n" + "="*100)
+print(f"{'📱 DISPOSITIVOS DETECTADOS':^100}")
+print("="*100)
+print(f" {'IP':<16} {'Tipo':<20} {'Fabricante':<25} {'Dispositivo':<20} {'Risco':<6} {'Portas'}")
 print("-"*100)
 
 tipos = {}
@@ -276,30 +304,39 @@ for d in dispositivos_processados:
     tipos[tipo] = tipos.get(tipo, 0) + 1
     
     # Indicador visual de risco
-    risk_icon = "🟢" if d["risco"] <= 2 else "🟡" if d["risco"] <= 5 else "🟠" if d["risco"] <= 7 else "🔴"
+    if d["risco"] <= 2:
+        risk_icon = "🟢"
+        risk_color = "\033[92m"  # Verde
+    elif d["risco"] <= 5:
+        risk_icon = "🟡"
+        risk_color = "\033[93m"  # Amarelo
+    elif d["risco"] <= 7:
+        risk_icon = "🟠"
+        risk_color = "\033[91m"  # Laranja/Vermelho
+    else:
+        risk_icon = "🔴"
+        risk_color = "\033[91m"  # Vermelho
     
-    # Mostrar portas abertas
+    # Nome amigável do dispositivo
+    nome_amigavel = d.get("tipo", "desconhecido").replace("_", " ").title()
+    
+    # Mostrar portas
     ports_info = ""
-    if d.get('open_ports') and len(d['open_ports']) > 0:
-        ports_str = ', '.join(map(str, d['open_ports']))
-        ports_info = f" 🔓 Portas: [{ports_str}]"
-    
-    # Mostrar serviços nas portas
-    services_info = ""
     if d.get('open_ports'):
-        services = []
-        for port in d['open_ports']:
-            service = {
-                22: "SSH", 23: "Telnet", 80: "HTTP", 443: "HTTPS",
-                445: "SMB", 3389: "RDP", 5900: "VNC", 8080: "Proxy",
-                554: "RTSP", 1900: "UPnP", 21: "FTP", 25: "SMTP"
-            }.get(port, "")
-            if service:
-                services.append(service)
-        if services:
-            services_info = f" [{', '.join(services)}]"
+        ports_short = []
+        for p in d['open_ports'][:3]:  # Mostrar até 3 portas
+            if p == 22: ports_short.append("🔐SSH")
+            elif p == 23: ports_short.append("⚠️Telnet")
+            elif p == 80: ports_short.append("🌐HTTP")
+            elif p == 443: ports_short.append("🔒HTTPS")
+            elif p == 445: ports_short.append("📁SMB")
+            elif p == 554: ports_short.append("📹RTSP")
+            elif p == 8080: ports_short.append("⚙️Proxy")
+            else: ports_short.append(str(p))
+        if ports_short:
+            ports_info = f" [{', '.join(ports_short)}]"
     
-    print(f"{risk_icon} {d['ip']:15} | {d['nome'][:20]:20} | {d['fabricante'][:25]:25} | {d['tipo'][:20]:20} | Risco {d['risco']}/10{ports_info}{services_info}")
+    print(f"{risk_icon} {d['ip']:<16} {d['tipo']:<20} {d['fabricante'][:24]:<25} {nome_amigavel:<20} {risk_color}{d['risco']}/10\033[0m {ports_info}")
 
 # Salvar histórico
 with open(historico_arquivo, "w") as f:
@@ -371,35 +408,37 @@ except Exception as e:
 # =========================
 # Scan Wi-Fi (opcional)
 # =========================
-if CONFIG.get("scan_wifi", False):
+if CONFIG.get("scan_wifi", False) and WIFI_AVAILABLE:
     print("\n" + "="*60)
     print("📶 SCAN WI-FI")
     print("="*60)
     
     try:
-        from core.wifi_scanner import listar_interfaces_wifi, scan_wifi_simples
-        
         interfaces = listar_interfaces_wifi()
         if interfaces:
-            print(f"📡 Interface: {interfaces[0]}")
+            print(f"📡 Interfaces Wi-Fi encontradas: {', '.join(interfaces)}")
             
-            redes_wifi = scan_wifi_simples()
+            # Tentar scan via nmcli primeiro (mais rápido)
+            redes_wifi = scan_wifi_nmcli() if 'scan_wifi_nmcli' in dir() else []
+            
+            if not redes_wifi:
+                redes_wifi = scan_wifi_simples()
             
             if redes_wifi:
                 print(f"\n📡 Redes Wi-Fi detectadas: {len(redes_wifi)}")
                 print("-" * 75)
-                print(f"   {'SSID':<25} {'BSSID':<20} {'Canal':<6} {'Sinal':<8} {'Segurança'}")
+                print(f"   {'SSID':<30} {'BSSID':<20} {'Canal':<6} {'Sinal':<8}")
                 print("-" * 75)
                 for rede in redes_wifi[:20]:
                     icone = "🔒" if rede.get('encrypted', True) else "🌐"
-                    ssid = rede['ssid'][:24] if len(rede['ssid']) > 24 else rede['ssid']
-                    sinal = rede.get('sinal', 'N/A')
-                    seguranca = "WPA2" if rede.get('encrypted', True) else "Aberta"
-                    print(f"   {icone} {ssid:<25} {rede['bssid']:<20} {rede['channel']:<6} {sinal:<8} {seguranca}")
+                    ssid = rede['ssid'][:28] if len(rede['ssid']) > 28 else rede['ssid']
+                    sinal = rede.get('sinal', rede.get('quality', 'N/A'))
+                    print(f"   {icone} {ssid:<30} {rede['bssid']:<20} {rede['channel']:<6} {sinal:<8}")
             else:
                 print("   Nenhuma rede Wi-Fi detectada")
         else:
             print("   Nenhuma interface Wi-Fi encontrada")
+            print("   Dica: Verifique se o Wi-Fi está ativado")
     except Exception as e:
         print(f"   ⚠️ Erro no scan Wi-Fi: {e}")
 
@@ -411,7 +450,9 @@ print("🔒 ALERTAS DE SEGURANÇA")
 print("="*60)
 
 alertas_gerados = 0
+
 for d in dispositivos_processados:
+    # Alertas por risco
     if d["risco"] >= 7:
         alertas_gerados += 1
         print(f"🚨 ALTO RISCO: {d['ip']} - {d['tipo']} (Risco {d['risco']}/10)")
@@ -420,9 +461,28 @@ for d in dispositivos_processados:
     elif d["risco"] >= 5:
         alertas_gerados += 1
         print(f"⚠️ RISCO MÉDIO: {d['ip']} - {d['tipo']} (Risco {d['risco']}/10)")
+    
+    # Alertas específicos por PORTA (dentro do loop!)
+    if 23 in d.get('open_ports', []):
+        alertas_gerados += 1
+        print(f"🚨 TELNET (23) ABERTO: {d['ip']} - Protocolo inseguro! Desative e use SSH")
+    
+    if 445 in d.get('open_ports', []):
+        alertas_gerados += 1
+        print(f"🚨 SMB (445) ABERTO: {d['ip']} - Risco de ransomware! Bloqueie se não for necessário")
+    
+    if 554 in d.get('open_ports', []):
+        alertas_gerados += 1
+        print(f"⚠️ RTSP (554) ABERTO: {d['ip']} - Possível câmera IP. Mantenha firmware atualizado")
+    
+    if 3389 in d.get('open_ports', []):
+        alertas_gerados += 1
+        print(f"⚠️ RDP (3389) ABERTO: {d['ip']} - Risco de força bruta! Use VPN ou firewall")
 
 if alertas_gerados == 0:
     print("✅ Nenhum alerta de segurança significativo detectado")
+else:
+    print(f"\n📊 Total de alertas: {alertas_gerados}")
 
 print("="*60)
 print(f"✅ Scan concluído em {datetime.now().strftime('%H:%M:%S')}")
