@@ -1,0 +1,10 @@
+IP,Hostname,MAC,Fabricante,Tipo,Risco,Severidade,Portas
+192.168.1.2,desconhecido,c4:6e:1f:f3:a9:ef,TP-Link Technologies,switch/rede,1,Baixo,
+192.168.1.64,desconhecido,5c:0f:fb:17:e0:d2,Amino Communications,desconhecido,3,Médio,
+192.168.1.65,desconhecido,c8:fe:0f:24:b5:7d,Unknown,camera_ip,1,Baixo,554
+192.168.1.66,desconhecido,24:4b:03:10:5d:98,Samsung Electronics,smarttv,3,Médio,8080
+192.168.1.67,desconhecido,66:ac:d4:04:17:9b,Unknown,desconhecido,3,Médio,
+192.168.1.71,desconhecido,2a:fa:67:88:b4:9e,Unknown,desconhecido,3,Médio,
+192.168.1.72,desconhecido,60:92:c8:ea:e6:7a,Unknown,desconhecido,3,Médio,
+192.168.1.254,desconhecido,78:3e:a1:90:50:80,Nokia Shanghai Bell,roteador,2,Baixo,"22, 80, 443"
+192.168.1.73,desconhecido,8c:b0:e9:2b:ec:a3,local,computador_conhecido,0,Baixo,

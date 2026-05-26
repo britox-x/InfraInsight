@@ -962,23 +962,23 @@
     },
     "c4:6e:1f:f3:a9:ef": {
         "tipo": "roteador",
-        "ultima_vista": "2026-05-25T23:13:50.420800",
-        "frequencia": 16
+        "ultima_vista": "2026-05-26T15:55:36.158163",
+        "frequencia": 22
     },
     "5c:0f:fb:17:e0:d2": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-25T23:13:50.420800",
-        "frequencia": 7
+        "ultima_vista": "2026-05-26T15:55:36.158163",
+        "frequencia": 13
     },
     "c8:fe:0f:24:b5:7d": {
         "tipo": "camera_ip",
-        "ultima_vista": "2026-05-25T23:13:50.420800",
-        "frequencia": 7
+        "ultima_vista": "2026-05-26T15:55:36.158163",
+        "frequencia": 12
     },
     "60:92:c8:ea:e6:7a": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-25T23:13:50.420800",
-        "frequencia": 7
+        "ultima_vista": "2026-05-26T15:55:36.158163",
+        "frequencia": 12
     },
     "82:3b:86:72:0f:d8": {
         "tipo": "desconhecido",
@@ -987,13 +987,13 @@
     },
     "78:3e:a1:90:50:80": {
         "tipo": "roteador",
-        "ultima_vista": "2026-05-25T23:13:50.420800",
-        "frequencia": 8
+        "ultima_vista": "2026-05-26T15:55:36.158163",
+        "frequencia": 14
     },
     "24:4b:03:10:5d:98": {
         "tipo": "smarttv",
-        "ultima_vista": "2026-05-25T23:13:50.420800",
-        "frequencia": 3
+        "ultima_vista": "2026-05-26T15:55:36.158163",
+        "frequencia": 8
     },
     "92:dd:a1:07:a7:e3": {
         "tipo": "desconhecido",
@@ -1002,7 +1002,17 @@
     },
     "72:fb:ad:bd:65:96": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-25T23:13:50.420800",
+        "ultima_vista": "2026-05-25T23:19:34.746292",
+        "frequencia": 6
+    },
+    "66:ac:d4:04:17:9b": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-26T15:10:09.070105",
+        "frequencia": 1
+    },
+    "2a:fa:67:88:b4:9e": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-26T15:55:36.158163",
         "frequencia": 5
     }
 }

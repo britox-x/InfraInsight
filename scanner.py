@@ -1,15 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
 #!/usr/bin/env python3
 # scanner.py - InfraInsight Network Scanner
 
@@ -18,6 +6,7 @@ import re
 import json
 import os
 import socket
+from tqdm import tqdm
 from datetime import datetime
 
 from core.host_local import obter_host_local
@@ -25,6 +14,9 @@ from core.classifier import classificar_dispositivo, classificar_por_porta, clas
 from core.risk_scorer import calcular_risco_avancado, classificar_severidade, gerar_recomendacoes
 from core.persistence import init_database, salvar_scan, carregar_historico
 from core.graph_generator import gerar_graficos
+from core.exporter import exportar_csv
+from core.telegram_bot import alerta_novo, alerta_porta, alerta_resumo
+from core.colors import Colors
 from core.utils import obter_mac_por_ip, fabricante_por_mac, detectar_rede, obter_nome_wifi, obter_gateway, detectar_ambiente_por_rede
 
 # Wi-Fi Scanner
@@ -77,6 +69,7 @@ print(f"[INFO] Gateway: {gateway}")
 # ============================================================
 
 import socket
+from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def scan_port(ip, port, timeout=0.3):
@@ -143,7 +136,7 @@ for scan in historical_scans:
 print(f"[INFO] Carregados {len(historical_scans)} scans históricos")
 
 # Executar Nmap
-print("[INFO] Executando scan Nmap...")
+print(Colors.info(" Executando scan Nmap..."))
 resultado = subprocess.check_output(["sudo", "nmap", "-sn", "-n", "-PR", rede]).decode()
 linhas = resultado.split("\n")
 dispositivos = []
@@ -185,7 +178,7 @@ else:
 novos_dispositivos = []
 dispositivos_processados = []
 
-for d in dispositivos:
+for d in tqdm(dispositivos, desc="🔍 Escaneando portas", unit="disp"):
     if d["mac"] == "desconhecido":
         d["mac"] = obter_mac_por_ip(d["ip"])
     
@@ -480,9 +473,29 @@ for d in dispositivos_processados:
         print(f"⚠️ RDP (3389) ABERTO: {d['ip']} - Risco de força bruta! Use VPN ou firewall")
 
 if alertas_gerados == 0:
-    print("✅ Nenhum alerta de segurança significativo detectado")
+    print(Colors.ok(" Nenhum alerta de segurança significativo detectado"))
 else:
     print(f"\n📊 Total de alertas: {alertas_gerados}")
 
 print("="*60)
+    # EXPORTAR CSV
+
+# EXPORTAR CSV
+if CONFIG.get("export_csv", True):
+    try:
+        exportar_csv(dispositivos_processados)
+    except Exception as e:
+        print(f"⚠️ CSV: {e}")
+
+# TELEGRAM
+if CONFIG.get("telegram_alerts", False):
+    for n in novos_dispositivos:
+        alerta_novo(n)
+    for d in dispositivos_processados:
+        if 23 in d.get("open_ports", []):
+            alerta_porta(d["ip"], 23, "Telnet")
+        if 445 in d.get("open_ports", []):
+            alerta_porta(d["ip"], 445, "SMB")
+    alerta_resumo(dados)
+
 print(f"✅ Scan concluído em {datetime.now().strftime('%H:%M:%S')}")

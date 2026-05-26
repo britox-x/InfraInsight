@@ -33,3 +33,5 @@ Thumbs.db
 
 # Config local (se tiver senhas)
 config.local.json
+config.json
+config.json

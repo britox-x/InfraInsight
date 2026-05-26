@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  infrainsight:
+    build: .
+    container_name: infrainsight
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./storage:/app/storage
+      - ./reports:/app/reports
+      - ./exports:/app/exports
+      - ./config.json:/app/config.json:ro
+    command: python scanner.py

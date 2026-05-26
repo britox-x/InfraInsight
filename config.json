@@ -25,4 +25,10 @@
     "huawei",
     "zte"
   ]
+,
+  "export_csv": true
+,
+  "telegram_alerts": false,
+  "telegram_token": "",
+  "telegram_chat_id": ""
 }

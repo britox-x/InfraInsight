@@ -6,3 +6,7 @@ matplotlib==3.10.9
 pillow==12.2.0
 mac-vendor-lookup==0.1.15
 influxdb-client==1.50.0
+tqdm
+pandas
+openpyxl
+requests
