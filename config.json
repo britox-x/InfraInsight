@@ -5,6 +5,8 @@
   "usar_influxdb": false,
   "usar_sqlite": true,
   "gerar_pdf": true,
+  "scan_wifi": true,
+  "gerar_pdf": true,
 "known_host_keywords": [
   "matheus",
   "550XCJ",

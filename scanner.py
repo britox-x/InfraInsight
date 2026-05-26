@@ -6,6 +6,17 @@ import re
 import json
 import os
 import socket
+
+
+# Wi-Fi Scanner
+try:
+    from core.wifi_scanner import scan_wifi_simples, listar_interfaces_wifi, verificar_aircrack
+    WIFI_AVAILABLE = True
+except ImportError:
+    WIFI_AVAILABLE = False
+    print("[INFO] Módulo Wi-Fi não disponível")
+
+
 from datetime import datetime
 
 from core.host_local import obter_host_local
@@ -256,10 +267,39 @@ print(f"Risco medio: {risco_medio}/10")
 print(f"MACs randomizados: {mac_randomizados}")
 print(f"Desconhecidos: {desconhecidos}")
 
-print("\nDispositivos detectados:")
+print("\n📱 DISPOSITIVOS DETECTADOS:")
+print("-"*100)
+
+tipos = {}
 for d in dispositivos_processados:
-    icon = "🟢" if d["risco"] <= 2 else "🟡" if d["risco"] <= 5 else "🟠"
-    print(f"{icon} {d['ip']:15} | {d['nome'][:20]:20} | {d['fabricante'][:25]:25} | {d['tipo'][:20]:20} | Risco {d['risco']}/10")
+    tipo = d["tipo"]
+    tipos[tipo] = tipos.get(tipo, 0) + 1
+    
+    # Indicador visual de risco
+    risk_icon = "🟢" if d["risco"] <= 2 else "🟡" if d["risco"] <= 5 else "🟠" if d["risco"] <= 7 else "🔴"
+    
+    # Mostrar portas abertas
+    ports_info = ""
+    if d.get('open_ports') and len(d['open_ports']) > 0:
+        ports_str = ', '.join(map(str, d['open_ports']))
+        ports_info = f" 🔓 Portas: [{ports_str}]"
+    
+    # Mostrar serviços nas portas
+    services_info = ""
+    if d.get('open_ports'):
+        services = []
+        for port in d['open_ports']:
+            service = {
+                22: "SSH", 23: "Telnet", 80: "HTTP", 443: "HTTPS",
+                445: "SMB", 3389: "RDP", 5900: "VNC", 8080: "Proxy",
+                554: "RTSP", 1900: "UPnP", 21: "FTP", 25: "SMTP"
+            }.get(port, "")
+            if service:
+                services.append(service)
+        if services:
+            services_info = f" [{', '.join(services)}]"
+    
+    print(f"{risk_icon} {d['ip']:15} | {d['nome'][:20]:20} | {d['fabricante'][:25]:25} | {d['tipo'][:20]:20} | Risco {d['risco']}/10{ports_info}{services_info}")
 
 # Salvar histórico
 with open(historico_arquivo, "w") as f:
@@ -327,6 +367,42 @@ try:
     print(f"\n📄 Relatório PDF gerado: {caminho_pdf}")
 except Exception as e:
     print(f"❌ Erro ao gerar PDF: {e}")
+
+# =========================
+# Scan Wi-Fi (opcional)
+# =========================
+if CONFIG.get("scan_wifi", False):
+    print("\n" + "="*60)
+    print("📶 SCAN WI-FI")
+    print("="*60)
+    
+    try:
+        from core.wifi_scanner import listar_interfaces_wifi, scan_wifi_simples
+        
+        interfaces = listar_interfaces_wifi()
+        if interfaces:
+            print(f"📡 Interface: {interfaces[0]}")
+            
+            redes_wifi = scan_wifi_simples()
+            
+            if redes_wifi:
+                print(f"\n📡 Redes Wi-Fi detectadas: {len(redes_wifi)}")
+                print("-" * 75)
+                print(f"   {'SSID':<25} {'BSSID':<20} {'Canal':<6} {'Sinal':<8} {'Segurança'}")
+                print("-" * 75)
+                for rede in redes_wifi[:20]:
+                    icone = "🔒" if rede.get('encrypted', True) else "🌐"
+                    ssid = rede['ssid'][:24] if len(rede['ssid']) > 24 else rede['ssid']
+                    sinal = rede.get('sinal', 'N/A')
+                    seguranca = "WPA2" if rede.get('encrypted', True) else "Aberta"
+                    print(f"   {icone} {ssid:<25} {rede['bssid']:<20} {rede['channel']:<6} {sinal:<8} {seguranca}")
+            else:
+                print("   Nenhuma rede Wi-Fi detectada")
+        else:
+            print("   Nenhuma interface Wi-Fi encontrada")
+    except Exception as e:
+        print(f"   ⚠️ Erro no scan Wi-Fi: {e}")
+
 # =========================
 # Alertas de segurança
 # =========================

@@ -16,4 +16,7 @@ def verificar_alertas(dispositivo, scan_atual, scan_anterior):
     if dispositivo.get('risco', 0) >= 7:
         alertas.append(f"🔴 ALTO RISCO: {dispositivo['ip']} - {dispositivo['risco']}/10")
     
+    # Detectar Telnet aberto
+    if 23 in dispositivo.get('open_ports', []):
+              alertas.append(f"⚠️ TELNET ABERTO em {dispositivo['ip']} - Protocolo inseguro!")
     return alertas
