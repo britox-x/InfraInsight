@@ -1,25 +1,35 @@
-# Ambiente virtual
-venv/
-
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.so
+venv/
+env/
 
-# Banco/cache
+# Banco de dados
 storage/*.db
-storage/*.backup
-storage/*.json
+storage/*.db-journal
+*.db.backup
 
-# Relatórios
+# Logs
+logs/
+*.log
+
+# Relatórios gerados
 reports/*.pdf
-reports/generated/*.pdf
-
-# Gráficos
 reports/graficos/*.png
 
-# Config sensível
-.env
-
 # Backups
-*.backup*
-config.json
+backups/
+*.bak
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Config local (se tiver senhas)
+config.local.json
