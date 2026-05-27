@@ -2,40 +2,40 @@
     "3c:84:6a:d7:3f:36": {
         "tipo": "roteador",
         "primeira_vista": "2026-05-20T11:16:10.346525",
-        "ultima_vista": "2026-05-21T12:59:46.727149",
-        "frequencia": 20,
+        "ultima_vista": "2026-05-27T13:15:47.097499",
+        "frequencia": 53,
         "ultimo_risco": 4,
         "ultima_severidade": "M\u00e9dio"
     },
     "46:ed:16:2a:53:d8": {
         "tipo": "desconhecido",
         "primeira_vista": "2026-05-20T11:16:10.346525",
-        "ultima_vista": "2026-05-21T12:59:46.727149",
-        "frequencia": 17,
+        "ultima_vista": "2026-05-27T12:15:55.696271",
+        "frequencia": 22,
         "ultimo_risco": 1,
         "ultima_severidade": "Baixo"
     },
     "a0:0f:37:7b:23:60": {
         "tipo": "infraestrutura",
         "primeira_vista": "2026-05-20T11:16:10.346525",
-        "ultima_vista": "2026-05-21T12:59:46.727149",
-        "frequencia": 20,
+        "ultima_vista": "2026-05-27T13:15:47.097499",
+        "frequencia": 53,
         "ultimo_risco": 1,
         "ultima_severidade": "Baixo"
     },
     "50:3e:aa:7e:95:1b": {
         "tipo": "switch/rede",
         "primeira_vista": "2026-05-20T11:16:10.346525",
-        "ultima_vista": "2026-05-21T12:59:46.727149",
-        "frequencia": 17,
+        "ultima_vista": "2026-05-27T13:15:47.097499",
+        "frequencia": 38,
         "ultimo_risco": 1,
         "ultima_severidade": "Baixo"
     },
     "50:3e:aa:7e:59:16": {
         "tipo": "switch/rede",
         "primeira_vista": "2026-05-20T11:16:10.346525",
-        "ultima_vista": "2026-05-21T12:59:46.727149",
-        "frequencia": 16,
+        "ultima_vista": "2026-05-27T13:15:47.097499",
+        "frequencia": 39,
         "ultimo_risco": 1,
         "ultima_severidade": "Baixo"
     },
@@ -48,8 +48,8 @@
     "1e:9f:d1:ba:c6:a1": {
         "tipo": "desconhecido",
         "primeira_vista": "2026-05-20T12:08:15.825317",
-        "ultima_vista": "2026-05-21T12:59:46.727149",
-        "frequencia": 11,
+        "ultima_vista": "2026-05-27T13:15:47.097499",
+        "frequencia": 39,
         "ultimo_risco": 1,
         "ultima_severidade": "Baixo"
     },
@@ -962,43 +962,43 @@
     },
     "c4:6e:1f:f3:a9:ef": {
         "tipo": "roteador",
-        "ultima_vista": "2026-05-26T23:36:17.616994",
-        "frequencia": 25
+        "ultima_vista": "2026-05-27T00:03:56.324102",
+        "frequencia": 27
     },
     "5c:0f:fb:17:e0:d2": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-26T23:36:17.616994",
-        "frequencia": 16
+        "ultima_vista": "2026-05-27T13:58:52.815835",
+        "frequencia": 20
     },
     "c8:fe:0f:24:b5:7d": {
         "tipo": "camera_ip",
-        "ultima_vista": "2026-05-26T23:36:17.616994",
-        "frequencia": 15
+        "ultima_vista": "2026-05-27T13:58:52.815835",
+        "frequencia": 19
     },
     "60:92:c8:ea:e6:7a": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-26T18:07:42.083662",
-        "frequencia": 13
+        "ultima_vista": "2026-05-27T00:03:56.324102",
+        "frequencia": 15
     },
     "82:3b:86:72:0f:d8": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-25T22:08:24.125595",
-        "frequencia": 4
+        "ultima_vista": "2026-05-27T00:03:56.324102",
+        "frequencia": 5
     },
     "78:3e:a1:90:50:80": {
         "tipo": "roteador",
-        "ultima_vista": "2026-05-26T23:36:17.616994",
-        "frequencia": 17
+        "ultima_vista": "2026-05-27T13:58:52.815835",
+        "frequencia": 21
     },
     "24:4b:03:10:5d:98": {
         "tipo": "smarttv",
-        "ultima_vista": "2026-05-26T23:36:17.616994",
-        "frequencia": 11
+        "ultima_vista": "2026-05-27T00:00:12.829252",
+        "frequencia": 12
     },
     "92:dd:a1:07:a7:e3": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-26T23:36:17.616994",
-        "frequencia": 6
+        "ultima_vista": "2026-05-27T13:58:52.815835",
+        "frequencia": 10
     },
     "72:fb:ad:bd:65:96": {
         "tipo": "desconhecido",
@@ -1012,7 +1012,17 @@
     },
     "2a:fa:67:88:b4:9e": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-26T15:55:36.158163",
-        "frequencia": 5
+        "ultima_vista": "2026-05-27T13:58:52.815835",
+        "frequencia": 7
+    },
+    "32:8f:08:70:4e:eb": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-27T11:34:33.503122",
+        "frequencia": 13
+    },
+    "d2:76:54:6e:86:9a": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-27T09:21:27.860342",
+        "frequencia": 2
     }
 }

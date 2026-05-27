@@ -1,0 +1,268 @@
+#!/usr/bin/env python3
+"""
+InfraInsight - Relatório PDF Completo
+"""
+
+import os
+from datetime import datetime
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.units import cm
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+    Image, PageBreak, HRFlowable
+)
+from reportlab.pdfgen import canvas as rl_canvas
+
+# Cores
+AZUL_ESCURO = colors.HexColor('#0D1117')
+AZUL_MEDIO = colors.HexColor('#161B22')
+AZUL_BORDA = colors.HexColor('#30363D')
+AZUL_PRIMARIO = colors.HexColor('#185FA5')
+AZUL_CLARO = colors.HexColor('#378ADD')
+VERDE = colors.HexColor('#1D9E75')
+VERMELHO = colors.HexColor('#E24B4A')
+AMARELO = colors.HexColor('#EF9F27')
+TEXTO_CLARO = colors.HexColor('#E6EDF3')
+TEXTO_MUTED = colors.HexColor('#8B949E')
+BRANCO = colors.white
+
+RISCO_COR = {1: VERDE, 2: AZUL_CLARO, 3: AMARELO, 4: colors.HexColor('#D85A30'), 5: VERMELHO}
+
+PASTA_REPORTS = 'reports'
+PASTA_ASSETS = 'assets'
+
+
+class InfraInsightCanvas(rl_canvas.Canvas):
+    def __init__(self, filename, logo_path=None, timestamp='', **kwargs):
+        super().__init__(filename, **kwargs)
+        self._logo_path = logo_path
+        self._timestamp = timestamp
+        self._page_num = 0
+
+    def showPage(self):
+        self._startPage()
+
+    def save(self):
+        self._page_num += 1
+        self._draw_footer()
+        super().save()
+
+    def _draw_footer(self):
+        w, h = A4
+        self.saveState()
+        self.setFillColor(TEXTO_MUTED)
+        self.setFont('Helvetica', 7)
+        self.drawString(1.5*cm, 1*cm, f'Gerado em: {self._timestamp}')
+        self.drawCentredString(w/2, 1*cm, 'InfraInsight - Relatório de Rede')
+        self.drawRightString(w-1.5*cm, 1*cm, f'Página {self._page_num}')
+        self.restoreState()
+
+
+def _estilos():
+    base = getSampleStyleSheet()
+    
+    titulo = ParagraphStyle('TituloCapa', fontName='Helvetica-Bold', fontSize=28,
+                            textColor=TEXTO_CLARO, alignment=TA_CENTER, spaceAfter=6)
+    subtitulo = ParagraphStyle('SubtituloCapa', fontName='Helvetica', fontSize=13,
+                               textColor=AZUL_CLARO, alignment=TA_CENTER, spaceAfter=4)
+    secao = ParagraphStyle('Secao', fontName='Helvetica-Bold', fontSize=14,
+                           textColor=AZUL_CLARO, spaceBefore=16, spaceAfter=8,
+                           borderPadding=(0, 0, 4, 0))
+    corpo = ParagraphStyle('Corpo', fontName='Helvetica', fontSize=9,
+                           textColor=TEXTO_CLARO, leading=14, spaceAfter=4)
+    
+    return {'titulo': titulo, 'subtitulo': subtitulo, 'secao': secao, 'corpo': corpo}
+
+
+def _capa(estilos, total, desconhecidos, risco_medio, timestamp):
+    itens = []
+    itens.append(Spacer(1, 4*cm))
+    itens.append(Paragraph('ANTENA INFRAINSIGHT', estilos['titulo']))
+    itens.append(Paragraph('Relatório de Scan de Rede', estilos['subtitulo']))
+    itens.append(Spacer(1, 2*cm))
+    itens.append(Paragraph(f'Gerado em: {timestamp}', estilos['subtitulo']))
+    itens.append(PageBreak())
+    return itens
+
+
+def _resumo_executivo(estilos, total, desconhecidos, risco_medio):
+    itens = []
+    itens.append(Paragraph('📊 Resumo Executivo', estilos['secao']))
+    itens.append(HRFlowable(width='100%', thickness=1, color=AZUL_PRIMARIO, spaceAfter=8))
+    
+    if risco_medio <= 2:
+        status = "✅ SAUDÁVEL"
+        cor = VERDE
+        recomendacao = "Rede bem configurada. Continue monitorando."
+    elif risco_medio <= 5:
+        status = "⚠️ ATENÇÃO"
+        cor = AMARELO
+        recomendacao = "Alguns pontos precisam de atenção. Reveja as portas abertas."
+    else:
+        status = "🔴 CRÍTICO"
+        cor = VERMELHO
+        recomendacao = "Ações imediatas necessárias!"
+    
+    dados = [
+        ["Status da Rede", status],
+        ["Total de Dispositivos", f"{total} dispositivos"],
+        ["Dispositivos Desconhecidos", f"{desconhecidos} dispositivos"],
+        ["Risco Médio", f"{risco_medio:.1f}/10"],
+        ["Recomendação", recomendacao]
+    ]
+    
+    t = Table(dados, colWidths=[5*cm, 7*cm])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (0,-1), AZUL_MEDIO),
+        ('BACKGROUND', (1,0), (1,-1), AZUL_ESCURO),
+        ('TEXTCOLOR', (0,0), (0,-1), TEXTO_CLARO),
+        ('TEXTCOLOR', (1,0), (1,-1), TEXTO_CLARO),
+        ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 10),
+        ('GRID', (0,0), (-1,-1), 0.5, AZUL_BORDA),
+        ('TOPPADDING', (0,0), (-1,-1), 8),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+    ]))
+    itens.append(t)
+    return itens
+
+
+def _tabela_dispositivos(dispositivos, estilos):
+    itens = []
+    itens.append(Paragraph('📋 Inventário de Dispositivos', estilos['secao']))
+    itens.append(HRFlowable(width='100%', thickness=0.5, color=AZUL_BORDA, spaceAfter=8))
+    
+    cabecalho = ['IP', 'Tipo', 'Fabricante', 'Risco']
+    dados = [cabecalho]
+    
+    tipos_nomes = {
+        'roteador': 'Roteador', 'switch/rede': 'Switch', 'infraestrutura': 'Infraestrutura',
+        'computador_conhecido': 'Computador', 'desconhecido': 'Desconhecido',
+        'camera_ip': 'Câmera IP', 'smarttv': 'Smart TV'
+    }
+    
+    for d in dispositivos[:30]:
+        tipo_orig = d.get('tipo', 'desconhecido')
+        tipo_nome = tipos_nomes.get(tipo_orig, tipo_orig.replace('_', ' ').title())
+        dados.append([
+            d.get('ip', '-'),
+            tipo_nome[:15],
+            (d.get('vendor', 'Desconhecido') or 'Desconhecido')[:20],
+            str(d.get('risco', 3))
+        ])
+    
+    t = Table(dados, colWidths=[3.5*cm, 4*cm, 5.5*cm, 1.5*cm])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), AZUL_PRIMARIO),
+        ('TEXTCOLOR', (0,0), (-1,0), BRANCO),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 9),
+        ('BACKGROUND', (0,1), (-1,-1), AZUL_MEDIO),
+        ('TEXTCOLOR', (0,1), (-1,-1), TEXTO_CLARO),
+        ('FONTSIZE', (0,1), (-1,-1), 8),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('GRID', (0,0), (-1,-1), 0.5, AZUL_BORDA),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [AZUL_MEDIO, AZUL_ESCURO]),
+    ]))
+    itens.append(t)
+    return itens
+
+
+def _portas_abertas(dispositivos, estilos):
+    itens = []
+    dispositivos_com_portas = [d for d in dispositivos if d.get('open_ports')]
+    
+    if dispositivos_com_portas:
+        itens.append(PageBreak())
+        itens.append(Paragraph('🔓 Portas Abertas Detectadas', estilos['secao']))
+        itens.append(HRFlowable(width='100%', thickness=0.5, color=AZUL_BORDA, spaceAfter=8))
+        
+        dados = [['IP', 'Tipo', 'Portas', 'Serviços']]
+        for d in dispositivos_com_portas[:15]:
+            portas = d.get('open_ports', [])
+            servicos = []
+            for p in portas:
+                servico = {22: 'SSH', 23: 'Telnet', 80: 'HTTP', 443: 'HTTPS', 
+                           554: 'RTSP', 445: 'SMB', 3389: 'RDP'}.get(p, '')
+                servicos.append(servico if servico else str(p))
+            dados.append([
+                d.get('ip', '-'),
+                d.get('tipo', '-')[:12],
+                ', '.join(map(str, portas[:5])),
+                ', '.join(servicos[:3])
+            ])
+        
+        t = Table(dados, colWidths=[3.5*cm, 3.5*cm, 3.5*cm, 4*cm])
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), AZUL_PRIMARIO),
+            ('TEXTCOLOR', (0,0), (-1,0), BRANCO),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,-1), 8),
+            ('GRID', (0,0), (-1,-1), 0.5, AZUL_BORDA),
+        ]))
+        itens.append(t)
+    return itens
+
+
+def _alertas_seguranca(dispositivos, estilos):
+    itens = []
+    alertas = []
+    
+    for d in dispositivos:
+        if 23 in d.get('open_ports', []):
+            alertas.append(f"⚠️ Telnet (porta 23) aberto em {d.get('ip')} - Protocolo inseguro!")
+        if 445 in d.get('open_ports', []):
+            alertas.append(f"⚠️ SMB (porta 445) aberto em {d.get('ip')} - Risco de ransomware")
+        if d.get('risco', 0) >= 5:
+            alertas.append(f"🔴 Dispositivo de alto risco: {d.get('ip')} - {d.get('tipo')}")
+    
+    if alertas:
+        itens.append(PageBreak())
+        itens.append(Paragraph('⚠️ Alertas de Segurança', estilos['secao']))
+        itens.append(HRFlowable(width='100%', thickness=0.5, color=VERMELHO, spaceAfter=8))
+        
+        for alerta in alertas[:10]:
+            itens.append(Paragraph(alerta, estilos['corpo']))
+            itens.append(Spacer(1, 0.2*cm))
+    return itens
+
+
+def gerar_pdf(dispositivos, historico=None, nome_arquivo=None):
+    os.makedirs(PASTA_REPORTS, exist_ok=True)
+    
+    ts = datetime.now()
+    timestamp_fs = ts.strftime('%Y%m%d_%H%M%S')
+    timestamp_leg = ts.strftime('%d/%m/%Y %H:%M:%S')
+    
+    if not nome_arquivo:
+        nome_arquivo = os.path.join(PASTA_REPORTS, f'infrainsight_report_{timestamp_fs}.pdf')
+    
+    total = len(dispositivos)
+    desconhecidos = sum(1 for d in dispositivos if d.get('tipo') == 'desconhecido')
+    riscos = [d.get('risco', 3) for d in dispositivos if isinstance(d.get('risco'), (int, float))]
+    risco_medio = sum(riscos) / len(riscos) if riscos else 0
+    
+    estilos = _estilos()
+    
+    doc = SimpleDocTemplate(nome_arquivo, pagesize=A4,
+                           leftMargin=1.5*cm, rightMargin=1.5*cm,
+                           topMargin=1.5*cm, bottomMargin=1.5*cm)
+    
+    historia = []
+    historia += _capa(estilos, total, desconhecidos, risco_medio, timestamp_leg)
+    historia += _resumo_executivo(estilos, total, desconhecidos, risco_medio)
+    historia += Spacer(1, 0.5*cm)
+    historia += _tabela_dispositivos(dispositivos, estilos)
+    historia += _portas_abertas(dispositivos, estilos)
+    historia += _alertas_seguranca(dispositivos, estilos)
+    
+    doc.build(historia, canvasmaker=lambda f, **kw: InfraInsightCanvas(f, timestamp=timestamp_leg, **kw))
+    return nome_arquivo
+
+
+if __name__ == '__main__':
+    teste = [{'ip': '192.168.1.1', 'tipo': 'roteador', 'vendor': 'TP-Link', 'risco': 2, 'open_ports': [23, 80]}]
+    print(gerar_pdf(teste))

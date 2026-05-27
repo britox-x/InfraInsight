@@ -1,0 +1,58 @@
+#!/bin/bash
+# Comando geral do InfraInsight
+
+cd /home/matheus/InfraInsight
+
+case "$1" in
+    start)
+        echo "🚀 Iniciando InfraInsight..."
+        
+        # Iniciar bot do Telegram
+        if ! pgrep -f "telegram_bot_completo" > /dev/null; then
+            source venv/bin/activate
+            nohup python core/telegram_bot_completo.py > telegram_bot.log 2>&1 &
+            echo "✅ Bot Telegram iniciado"
+        else
+            echo "⚠️ Bot já está rodando"
+        fi
+        
+        # Iniciar dashboard
+        if ! pgrep -f "dashboard/app.py" > /dev/null; then
+            cd dashboard
+            source ../venv/bin/activate
+            nohup python app.py > dashboard.log 2>&1 &
+            cd ..
+            echo "✅ Dashboard iniciado (porta 5000)"
+        else
+            echo "⚠️ Dashboard já está rodando"
+        fi
+        ;;
+    
+    stop)
+        echo "🛑 Parando InfraInsight..."
+        pkill -f "telegram_bot_completo"
+        pkill -f "dashboard/app.py"
+        echo "✅ Serviços parados"
+        ;;
+    
+    status)
+        echo "📊 STATUS INFRAINSIGHT"
+        echo "Bot Telegram: $(pgrep -f "telegram_bot_completo" > /dev/null && echo "✅ Rodando" || echo "❌ Parado")"
+        echo "Dashboard: $(pgrep -f "dashboard/app.py" > /dev/null && echo "✅ Rodando" || echo "❌ Parado")"
+        ;;
+    
+    scan)
+        echo "🔍 Executando scan via Telegram..."
+        echo "Envie /scan no Telegram para executar o scan"
+        ;;
+    
+    *)
+        echo "INFRAINSIGHT - Comandos disponíveis:"
+        echo "  infra start   - Iniciar bot e dashboard"
+        echo "  infra stop    - Parar serviços"
+        echo "  infra status  - Ver status"
+        echo ""
+        echo "Para executar scan, use o Telegram: /scan"
+        echo "Dashboard: http://localhost:5000"
+        ;;
+esac

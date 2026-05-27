@@ -37,12 +37,24 @@ else:
 
 # ============================================================
 # BOT TELEGRAM (LISTENER PARA COMANDOS)
+# ============================================================
 
+if CONFIG.get("telegram_alerts", False):
+    try:
+        from core.telegram_bot_completo import iniciar_em_background
+        iniciar_em_background()
+        print("🤖 Bot Telegram ativo! Comandos: /status, /dashboard, /report, /help")
+    except ImportError:
+        print("⚠️ Módulo telegram_bot_completo não encontrado")
+    except Exception as e:
+        print(f"⚠️ Bot não iniciado: {e}")
 
+# ============================================================
+# DETECTAR AMBIENTE (colocar AQUI, depois do CONFIG)
+# ============================================================
 gateway = CONFIG.get("gateway_ip") or obter_gateway()
 rede = detectar_rede()
 nome_wifi = obter_nome_wifi()
-
 
 # Verificar se deve forçar detecção de ambiente
 if CONFIG.get("ambiente_force_detect", False) or not CONFIG.get("ambiente"):

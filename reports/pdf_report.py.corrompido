@@ -263,46 +263,70 @@ def _capa(estilos, total_dispositivos, total_desconhecidos,
 def _tabela_dispositivos(dispositivos, estilos):
     """Tabela completa de dispositivos com cores por nível de risco."""
     itens = []
-    itens.append(Paragraph('Inventário de Dispositivos', estilos['secao']))
-    itens.append(
-        HRFlowable(
-            width='100%',
-            thickness=0.5,
-            color=AZUL_BORDA,
-            spaceAfter=8))
-
-    cabecalho = ['IP', 'Hostname', 'MAC', 'Fabricante', 'Tipo', 'Risco']
+    itens.append(Paragraph('📋 Inventário de Dispositivos', estilos['secao']))
+    itens.append(Spacer(1, 0.2*cm))
+    
+    cabecalho = ['IP', 'Hostname', 'Fabricante', 'Tipo', 'Risco']
     dados = [cabecalho]
 
     for d in dispositivos:
         risco = d.get('risco', 3)
+        # Nome do tipo em português
+        tipo_nome = {
+            'roteador': 'Roteador',
+            'switch/rede': 'Switch',
+            'infraestrutura': 'Infraestrutura',
+            'computador_conhecido': 'Computador',
+            'desconhecido': 'Desconhecido',
+            'camera_ip': 'Câmera IP',
+            'smarttv': 'Smart TV'
+        }.get(d.get('tipo', 'desconhecido'), d.get('tipo', 'desconhecido').replace('_', ' ').title())
+        
         dados.append([
             d.get('ip', '-'),
-            (d.get('hostname', '-') or '-')[:22],
-            (d.get('mac', '-') or '-'),
-            (d.get('vendor', 'Desconhecido') or 'Desconhecido')[:18],
-            d.get('tipo', 'desconhecido').replace('_', ' ').title()[:18],
+            (d.get('hostname', '-') or '-')[:18],
+            (d.get('vendor', 'Desconhecido') or 'Desconhecido')[:20],
+            tipo_nome[:18],
             str(risco),
         ])
 
-    col_w = [2.8 * cm, 3.5 * cm, 3.5 * cm, 3.2 * cm, 3.0 * cm, 1.2 * cm]
+    col_w = [3.0 * cm, 3.5 * cm, 3.5 * cm, 3.5 * cm, 1.2 * cm]
     t = Table(dados, colWidths=col_w, repeatRows=1)
 
     style_cmds = [
+        # Cabeçalho - fundo escuro, texto branco
         ('BACKGROUND', (0, 0), (-1, 0), AZUL_PRIMARIO),
         ('TEXTCOLOR', (0, 0), (-1, 0), BRANCO),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 8),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        # Linhas de dados
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 7.5),
-        ('TEXTCOLOR', (0, 1), (-1, -1), TEXTO_CLARO),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [AZUL_ESCURO, AZUL_MEDIO]),
-        ('GRID', (0, 0), (-1, -1), 0.4, AZUL_BORDA),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        # Cores alternadas das linhas
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [AZUL_MEDIO, AZUL_ESCURO]),
+        # Bordas
+        ('GRID', (0, 0), (-1, -1), 0.5, AZUL_BORDA),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
     ]
+
+    # Colorir coluna de risco por nível
+    for linha_idx, row in enumerate(dados[1:], start=1):
+        try:
+            nivel = int(row[4])
+            cor = RISCO_COR.get(nivel, TEXTO_CLARO)
+            style_cmds.append(('TEXTCOLOR', (4, linha_idx), (4, linha_idx), cor))
+            style_cmds.append(('FONTNAME', (4, linha_idx), (4, linha_idx), 'Helvetica-Bold'))
+        except (ValueError, IndexError):
+            pass
+
+    t.setStyle(TableStyle(style_cmds))
+    itens.append(t)
+    return itens
 
     # Colorir coluna de risco por nível
     for linha_idx, row in enumerate(dados[1:], start=1):
@@ -436,6 +460,76 @@ def _secao_resumo(dispositivos, estilos):
 # ════════════════════════════════════════════════════════════════════════════
 # Função principal
 # ════════════════════════════════════════════════════════════════════════════
+def _secao_resumo_executivo(estilos, total_dispositivos, desconhecidos, risco_medio):
+    """Seção de resumo executivo"""
+    itens = []
+    itens.append(Paragraph("📊 Resumo Executivo", estilos['secao']))
+    itens.append(HRFlowable(width='100%', thickness=0.5, color=AZUL_BORDA, spaceAfter=8))
+    
+    if risco_medio <= 2:
+        status = "✅ SAUDÁVEL"
+        recomendacao = "Rede bem configurada. Continue monitorando."
+    elif risco_medio <= 5:
+        status = "⚠️ ATENÇÃO"
+        recomendacao = "Alguns pontos precisam de atenção. Reveja as portas abertas."
+    else:
+        status = "🔴 CRÍTICO"
+        recomendacao = "Ações imediatas necessárias! Verifique dispositivos suspeitos."
+    
+    dados = [
+        ["Status Geral", status],
+        ["Dispositivos", str(total_dispositivos)],
+        ["Desconhecidos", str(desconhecidos)],
+        ["Risco Médio", f"{risco_medio:.1f}/10"],
+        ["Recomendação", recomendacao]
+    ]
+    
+    t = Table(dados, colWidths=[5*cm, 9*cm])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (0,-1), AZUL_MEDIO),
+        ('TEXTCOLOR', (0,0), (0,-1), TEXTO_CLARO),
+        ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
+        ('FONTNAME', (1,0), (1,-1), 'Helvetica'),
+        ('FONTSIZE', (0,0), (-1,-1), 9),
+        ('GRID', (0,0), (-1,-1), 0.5, AZUL_BORDA),
+    ]))
+    itens.append(t)
+    return itens
+
+def _secao_portas(dispositivos, estilos):
+    """Lista dispositivos com portas abertas"""
+    itens = []
+    dispositivos_com_portas = [d for d in dispositivos if d.get('open_ports')]
+    
+    if dispositivos_com_portas:
+        itens.append(PageBreak())
+        itens.append(Paragraph("🔓 Portas Abertas Detectadas", estilos['secao']))
+        itens.append(HRFlowable(width='100%', thickness=0.5, color=AZUL_BORDA, spaceAfter=8))
+        
+        dados = [["IP", "Tipo", "Portas Abertas", "Serviços"]]
+        for d in dispositivos_com_portas[:15]:
+            portas = d.get('open_ports', [])
+            servicos = []
+            for p in portas:
+                servico = {22: "SSH", 23: "Telnet", 80: "HTTP", 443: "HTTPS", 554: "RTSP"}.get(p, "")
+                servicos.append(servico if servico else str(p))
+            dados.append([
+                d.get('ip', '-'),
+                d.get('tipo', '-')[:15],
+                ', '.join(map(str, portas[:5])),
+                ', '.join(servicos[:5])
+            ])
+        
+        t = Table(dados, colWidths=[3*cm, 4*cm, 3*cm, 4*cm])
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), AZUL_PRIMARIO),
+            ('TEXTCOLOR', (0,0), (-1,0), BRANCO),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,-1), 8),
+            ('GRID', (0,0), (-1,-1), 0.5, AZUL_BORDA),
+        ]))
+        itens.append(t)
+    return itens
 
 def gerar_pdf(dispositivos: list, historico: list = None,
               nome_arquivo: str = None) -> str:
@@ -506,13 +600,17 @@ def gerar_pdf(dispositivos: list, historico: list = None,
         bottomMargin=1.8 * cm,
     )
 
+
     historia = []
-    historia += _capa(estilos, total, desconhecidos,
-                      risco_medio, timestamp_leg)
+    historia += _capa(estilos, total, desconhecidos, risco_medio, timestamp_leg)
+    historia += _secao_resumo_executivo(estilos, total, desconhecidos, risco_medio)
+    historia += Spacer(1, 0.2*cm)
     historia += _tabela_dispositivos(dispositivos, estilos)
+    
     if caminhos_graficos:
         historia += _secao_graficos(caminhos_graficos, estilos)
     historia += _secao_resumo(dispositivos, estilos)
+
 
     # ── Build com canvas customizado ──────────────────────────────────────
     doc.build(

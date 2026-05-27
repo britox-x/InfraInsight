@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login - InfraInsight</title>
+    <style>
+        body{font-family:Arial;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;justify-content:center;align-items:center;height:100vh}
+        .card{background:white;padding:40px;border-radius:20px;width:350px}
+        input{width:100%;padding:10px;margin:10px 0;border:1px solid #ddd;border-radius:5px}
+        button{width:100%;padding:10px;background:#667eea;color:white;border:none;border-radius:5px;cursor:pointer}
+        .alert{color:red;margin-bottom:10px}
+    </style>
+</head>
+<body>
+<div class="card">
+    <h2>🛰️ InfraInsight</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, msg in messages %}
+            <div class="alert">{{ msg }}</div>
+        {% endfor %}
+    {% endwith %}
+    <form method="POST">
+        <input type="text" name="username" placeholder="Usuário" required>
+        <input type="password" name="password" placeholder="Senha" required>
+        <button type="submit">Entrar</button>
+    </form>
+</div>
+</body>
+</html>

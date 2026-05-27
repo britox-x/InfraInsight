@@ -1,294 +1,104 @@
-<!-- dashboard/templates/index.html - Versão simplificada -->
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>InfraInsight Dashboard</title>
+    <title>ANTENA INFRAINSIGHT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * { box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        .container { max-width: 1400px; margin: 0 auto; }
-        .header {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        h1 { margin: 0 0 5px 0; color: #333; }
-        .subtitle { color: #666; margin: 0; }
-        .cards-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .card {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
-        }
-        .card:hover { transform: translateY(-5px); }
-        .card h3 {
-            margin: 0 0 10px 0;
-            font-size: 14px;
-            color: #666;
-            text-transform: uppercase;
-        }
-        .card .value {
-            font-size: 32px;
-            font-weight: bold;
-            color: #333;
-        }
-        .risk-low { color: #10b981; }
-        .risk-medium { color: #f59e0b; }
-        .risk-high { color: #ef4444; }
-        .risk-critical { color: #7f1d1d; }
-        .charts-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .chart-card {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .chart-card h3 { margin: 0 0 15px 0; color: #333; }
-        canvas { max-height: 300px; }
-        .details-card {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .details-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
-        .detail-item {
-            padding: 10px;
-            background: #f9fafb;
-            border-radius: 5px;
-        }
-        .detail-item strong {
-            display: block;
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 5px;
-        }
-        .detail-item .value { font-size: 18px; font-weight: bold; color: #333; }
-        .table-card {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            overflow-x: auto;
-        }
-        table { width: 100%; border-collapse: collapse; }
-        th {
-            background: #1f2937;
-            color: white;
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
-        }
-        td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
-        tr:hover { background: #f9fafb; }
-        .nav-links { margin-top: 15px; }
-        .nav-link {
-            display: inline-block;
-            padding: 8px 16px;
-            background: #667eea;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            margin-right: 10px;
-            font-size: 14px;
-        }
-        .nav-link:hover { background: #5a67d8; }
-        @media (max-width: 768px) { .charts-grid { grid-template-columns: 1fr; } }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#667eea,#764ba2);min-height:100vh;color:#1a1a2e;padding:20px}
+        .container{max-width:1400px;margin:0 auto}
+        .header{background:white;border-radius:20px;padding:25px;margin-bottom:25px;box-shadow:0 10px 30px rgba(0,0,0,0.1)}
+        .logo-area{display:flex;align-items:center;gap:15px}
+        .logo-icon{font-size:48px}
+        .logo-text h1{font-size:32px;color:#667eea}
+        .nav-links{margin-top:20px;display:flex;gap:15px;border-top:1px solid #eee;padding-top:20px}
+        .nav-link{padding:10px 25px;background:#f5f5f5;border-radius:10px;text-decoration:none;color:#333;transition:all 0.3s}
+        .nav-link:hover{background:#667eea;color:white}
+        .nav-link.logout{background:#dc2626;color:white}
+        .nav-link.logout:hover{background:#b91c1c}
+        .banner{background:linear-gradient(135deg,#667eea,#764ba2);border-radius:20px;padding:40px;text-align:center;margin-bottom:25px;color:white}
+        .banner h2{font-size:36px}
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-bottom:25px}
+        .stat-card{background:white;border-radius:20px;padding:25px;box-shadow:0 5px 15px rgba(0,0,0,0.1);transition:transform 0.3s}
+        .stat-card:hover{transform:translateY(-5px)}
+        .stat-card h3{font-size:13px;text-transform:uppercase;color:#999;margin-bottom:10px}
+        .stat-card .value{font-size:42px;font-weight:800;color:#333}
+        .infra-card{background:linear-gradient(135deg,#667eea,#764ba2);color:white}
+        .infra-card .value{color:white}
+        .infra-card .score{font-size:48px;font-weight:800}
+        .status{font-size:16px;margin-top:10px;padding:5px 15px;border-radius:20px;display:inline-block}
+        .status.success{background:rgba(255,255,255,0.2)}
+        .status.warning{background:rgba(255,255,255,0.2)}
+        .status.danger{background:rgba(255,255,255,0.2)}
+        .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(450px,1fr));gap:20px;margin-bottom:25px}
+        .chart-card{background:white;border-radius:20px;padding:25px;box-shadow:0 5px 15px rgba(0,0,0,0.1)}
+        .chart-card h3{margin-bottom:20px}
+        canvas{max-height:300px}
+        .table-card{background:white;border-radius:20px;padding:25px;overflow-x:auto;box-shadow:0 5px 15px rgba(0,0,0,0.1)}
+        table{width:100%;border-collapse:collapse}
+        th,td{padding:12px;text-align:left;border-bottom:1px solid #eee}
+        th{color:#666;font-weight:600}
+        .risk-low{color:#10b981;font-weight:600}
+        .risk-medium{color:#f59e0b;font-weight:600}
+        .risk-high{color:#ef4444;font-weight:600}
+        .badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600}
+        .badge-baixo{background:#10b98120;color:#10b981}
+        .badge-médio{background:#f59e0b20;color:#f59e0b}
+        .badge-alto{background:#ef444420;color:#ef4444}
+        @media (max-width:768px){.charts-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:repeat(2,1fr)}}
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🔒 InfraInsight Dashboard</h1>
-            <p class="subtitle">Monitoramento de Segurança de Rede Local</p>
-            <div class="nav-links">
-                <a href="/" class="nav-link">📊 Dashboard</a>
-                <a href="/history" class="nav-link">📜 Histórico</a>
-            </div>
+<div class="container">
+    <div class="header">
+        <div class="logo-area">
+            <div class="logo-icon">🛰️</div>
+            <div class="logo-text"><h1>ANTENA INFRAINSIGHT</h1><p>Visibilidade Inteligente para sua Rede</p></div>
         </div>
-
-        <div class="cards-container">
-            <div class="card">
-                <h3>Total de Scans</h3>
-                <div class="value">{{ total_scans }}</div>
-            </div>
-            <div class="card">
-                <h3>Dispositivos Ativos</h3>
-                <div class="value">{{ latest_scan.ips_ativos }}</div>
-            </div>
-            <div class="card">
-                <h3>Desconhecidos</h3>
-                <div class="value">{{ latest_scan.desconhecidos }}</div>
-            </div>
-            <div class="card">
-                <h3>Risco Médio</h3>
-                <div class="value {% if latest_scan.risco_medio <= 2 %}risk-low{% elif latest_scan.risco_medio <= 5 %}risk-medium{% elif latest_scan.risco_medio <= 7 %}risk-high{% else %}risk-critical{% endif %}">
-                    {{ "%.1f"|format(latest_scan.risco_medio) }}/10
-                </div>
-            </div>
-        </div>
-
-        <div class="charts-grid">
-            <div class="chart-card">
-                <h3>📈 Evolução do Risco</h3>
-                <canvas id="riskChart"></canvas>
-            </div>
-            <div class="chart-card">
-                <h3>🥧 Distribuição</h3>
-                <canvas id="distributionChart"></canvas>
-            </div>
-        </div>
-
-        <div class="details-card">
-            <h2>📋 Detalhes do Último Scan</h2>
-            <div class="details-grid">
-                <div class="detail-item">
-                    <strong>Data/Hora</strong>
-                    <div class="value">{{ latest_scan.timestamp[:19] if latest_scan.timestamp else 'N/A' }}</div>
-                </div>
-                <div class="detail-item">
-                    <strong>Ambiente</strong>
-                    <div class="value">{{ latest_scan.ambiente }}</div>
-                </div>
-                <div class="detail-item">
-                    <strong>Uso da Rede</strong>
-                    <div class="value">{{ "%.1f"|format(latest_scan.uso) }}%</div>
-                </div>
-                <div class="detail-item">
-                    <strong>MAC Randomizados</strong>
-                    <div class="value">{{ latest_scan.mac_randomizados }}</div>
-                </div>
-                <div class="detail-item">
-                    <strong>Recomendação</strong>
-                    <div class="value">{{ latest_scan.recomendacao }}</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="table-card">
-            <h2>📊 Histórico de Scans</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Dispositivos</th>
-                        <th>Uso</th>
-                        <th>Risco</th>
-                        <th>Desconhecidos</th>
-                        <th>MAC Rand</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for scan in recent_scans %}
-                    <tr>
-                        <td>{{ scan.timestamp[:19] if scan.timestamp else 'N/A' }}</td>
-                        <td>{{ scan.ips_ativos }}</td>
-                        <td>{{ "%.1f"|format(scan.uso) }}%</td>
-                        <td class="{% if scan.risco_medio <= 2 %}risk-low{% elif scan.risco_medio <= 5 %}risk-medium{% elif scan.risco_medio <= 7 %}risk-high{% else %}risk-critical{% endif %}">
-                            {{ "%.1f"|format(scan.risco_medio) }}/10
-                        </td>
-                        <td>{{ scan.desconhecidos }}</td>
-                        <td>{{ scan.mac_randomizados }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="nav-links">
+            <a href="/" class="nav-link">📊 Dashboard</a>
+            <a href="/history" class="nav-link">📜 Histórico</a>
+            <a href="/logout" class="nav-link logout">🚪 Sair</a>
         </div>
     </div>
-
-    <script>
-        // Dados para os gráficos
-        const recentScans = [
-            {% for scan in recent_scans %}
-            {
-                timestamp: "{{ scan.timestamp }}",
-                risco_medio: {{ scan.risco_medio }},
-                ips_ativos: {{ scan.ips_ativos }}
-            }{% if not loop.last %},{% endif %}
-            {% endfor %}
-        ];
-        
-        // Gráfico de evolução
-        if (recentScans.length > 0) {
-            const reversed = [...recentScans].reverse();
-            const ctx1 = document.getElementById('riskChart').getContext('2d');
-            new Chart(ctx1, {
-                type: 'line',
-                data: {
-                    labels: reversed.map(s => s.timestamp.slice(5, 16)),
-                    datasets: [{
-                        label: 'Risco Médio',
-                        data: reversed.map(s => s.risco_medio),
-                        borderColor: '#ef4444',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }, {
-                        label: 'Dispositivos',
-                        data: reversed.map(s => s.ips_ativos),
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true
-                }
-            });
-        }
-        
-        // Gráfico de distribuição
-        const normalCount = {{ latest_scan.ips_ativos }} - {{ latest_scan.desconhecidos }} - {{ latest_scan.mac_randomizados }};
-        const ctx2 = document.getElementById('distributionChart').getContext('2d');
-        new Chart(ctx2, {
-            type: 'doughnut',
-            data: {
-                labels: ['Normais', 'Desconhecidos', 'MAC Rand'],
-                datasets: [{
-                    data: [normalCount, {{ latest_scan.desconhecidos }}, {{ latest_scan.mac_randomizados }}],
-                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: { position: 'bottom' }
-                }
-            }
+    <div class="banner"><h2>ANTENA INFRAINSIGHT</h2><p>VISIBILIDADE INTELIGENTE PARA SUA REDE</p><small>Observabilidade · Análise · Gestão de Redes</small></div>
+    <div class="stats-grid">
+        <div class="stat-card"><h3>Total de Scans</h3><div class="value">{{ total_scans }}</div></div>
+        <div class="stat-card"><h3>Dispositivos Ativos</h3><div class="value">{{ latest_scan.ips_ativos }}</div></div>
+        <div class="stat-card"><h3>Desconhecidos</h3><div class="value">{{ latest_scan.desconhecidos }}</div></div>
+        <div class="stat-card infra-card"><h3>🏆 INFRA SCORE</h3><div class="score">{{ infra_score.score }}/10</div><div class="status {{ infra_score.cor }}">{{ infra_score.status }}</div>
+        {% if infra_score.motivos %}<div style="margin-top:15px;font-size:12px"><strong>Motivos:</strong><ul>{% for m in infra_score.motivos %}<li>{{ m }}</li>{% endfor %}</ul></div>{% endif %}
+        </div>
+    </div>
+    <div class="charts-grid">
+        <div class="chart-card"><h3>📈 Evolução do Risco</h3><canvas id="riskChart"></canvas></div>
+        <div class="chart-card"><h3>🥧 Distribuição por Tipo</h3><canvas id="typeChart"></canvas></div>
+    </div>
+    <div class="table-card">
+        <h3>📱 Dispositivos na Rede</h3>
+        <table><thead><tr><th>IP</th><th>Tipo</th><th>Fabricante</th><th>Risco</th><th>Severidade</th></tr></thead>
+        <tbody>{% for d in devices %}<tr><td>{{ d.ip }}</td><td>{{ d.tipo }}</td><td>{{ d.fabricante[:25] }}</td><td class="risk-{{ 'low' if d.risk_score <= 2 else 'medium' if d.risk_score <= 5 else 'high' }}">{{ d.risk_score }}/10</td><td><span class="badge badge-{{ d.severity|lower }}">{{ d.severity }}</span></td></tr>{% endfor %}</tbody>
+        </table>
+    </div>
+</div>
+<script>
+    const evolucao = {{ evolucao|tojson }};
+    if (evolucao && evolucao.length) {
+        const rev = [...evolucao].reverse();
+        new Chart(document.getElementById('riskChart'), {
+            type: 'line',
+            data: { labels: rev.map(e => e.timestamp.slice(5,16)), datasets: [{ label: 'Risco Médio', data: rev.map(e => e.risco_medio), borderColor: '#667eea', fill: true }, { label: 'Dispositivos', data: rev.map(e => e.ips_ativos), borderColor: '#764ba2', fill: true }] }
         });
-    </script>
+    }
+    const tipos = {{ tipos_count|tojson }};
+    if (tipos && Object.keys(tipos).length) {
+        new Chart(document.getElementById('typeChart'), {
+            type: 'doughnut',
+            data: { labels: Object.keys(tipos), datasets: [{ data: Object.values(tipos), backgroundColor: ['#10b981','#667eea','#f59e0b','#ef4444'] }] }
+        });
+    }
+</script>
 </body>
 </html>

@@ -1,6 +1,79 @@
-<!-- InfraScore Card -->
-<div class="stat-card">
-    <h3>🏆 INFRA SCORE</h3>
-    <div class="value" id="infra-score">--/10</div>
-    <div id="infra-status"></div>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>ANTENA INFRAINSIGHT</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh;color:#fff;padding:20px}
+        .container{max-width:1400px;margin:0 auto}
+        .header{background:rgba(255,255,255,0.1);border-radius:20px;padding:20px;margin-bottom:25px}
+        .logo-area{display:flex;align-items:center;gap:20px}
+        .logo-text h1{font-size:28px;background:linear-gradient(135deg,#fff,#a8c0ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .nav-links{margin-top:15px;display:flex;gap:15px}
+        .nav-link{padding:8px20px;background:rgba(255,255,255,0.1);border-radius:10px;text-decoration:none;color:#fff}
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-bottom:25px}
+        .stat-card{background:rgba(255,255,255,0.1);border-radius:20px;padding:20px}
+        .stat-card .value{font-size:36px;font-weight:800}
+        .infra-card{background:linear-gradient(135deg,#667eea,#764ba2);border-radius:20px;padding:20px;text-align:center}
+        .infra-card .score{font-size:48px;font-weight:800}
+        .banner{background:linear-gradient(135deg,#667eea,#764ba2);padding:40px;border-radius:20px;text-align:center;margin-bottom:25px}
+        .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(450px,1fr));gap:20px;margin-bottom:25px}
+        .chart-card{background:rgba(255,255,255,0.1);border-radius:20px;padding:20px}
+        .table-card{background:rgba(255,255,255,0.1);border-radius:20px;padding:20px;overflow-x:auto}
+        table{width:100%;border-collapse:collapse}
+        th,td{padding:12px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.1)}
+        .risk-low{color:#10b981}
+        .risk-medium{color:#f59e0b}
+        .risk-high{color:#ef4444}
+        .badge{display:inline-block;padding:4px10px;border-radius:20px;font-size:11px}
+        .badge-baixo{background:#10b981}
+        .badge-médio{background:#f59e0b}
+        .badge-alto{background:#ef4444}
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="logo-area">
+            <div class="logo-text"><h1>🛰️ ANTENA INFRAINSIGHT</h1><p>Visibilidade Inteligente para sua Rede</p></div>
+        </div>
+        <div class="nav-links"><a href="/" class="nav-link">📊 Dashboard</a><a href="/history" class="nav-link">📜 Histórico</a></div>
+    </div>
+    <div class="banner"><h2>ANTENA INFRAINSIGHT</h2><p>VISIBILIDADE INTELIGENTE PARA SUA REDE</p><p>Observabilidade · Análise · Gestão de Redes</p></div>
+    <div class="stats-grid">
+        <div class="stat-card"><h3>Total de Scans</h3><div class="value">{{ total_scans }}</div></div>
+        <div class="stat-card"><h3>Dispositivos Ativos</h3><div class="value">{{ latest_scan.ips_ativos }}</div></div>
+        <div class="stat-card"><h3>Desconhecidos</h3><div class="value">{{ latest_scan.desconhecidos }}</div></div>
+        <div class="infra-card"><h3>🏆 INFRA SCORE</h3><div class="score">{{ infra_score.score }}/10</div><div>{{ infra_score.status }}</div></div>
+    </div>
+    <div class="charts-grid">
+        <div class="chart-card"><h3>📈 Evolução do Risco</h3><canvas id="riskChart"></canvas></div>
+        <div class="chart-card"><h3>🥧 Distribuição por Tipo</h3><canvas id="typeChart"></canvas></div>
+    </div>
+    <div class="table-card">
+        <h3>📱 Dispositivos na Rede</h3>
+        <table><thead><tr><th>IP</th><th>Tipo</th><th>Fabricante</th><th>Risco</th><th>Severidade</th></tr></thead>
+        <tbody>{% for d in devices %}<tr><td>{{ d.ip }}</td><td>{{ d.tipo }}</td><td>{{ d.fabricante[:20] }}</td><td class="risk-{{ 'low' if d.risk_score <= 2 else 'medium' if d.risk_score <= 5 else 'high' }}">{{ d.risk_score }}/10</td><td><span class="badge badge-{{ d.severity|lower }}">{{ d.severity }}</span></td></tr>{% endfor %}</tbody>
+        </table>
+    </div>
 </div>
+<script>
+    const evolucao = {{ evolucao|tojson }};
+    if (evolucao.length) {
+        new Chart(document.getElementById('riskChart'), {
+            type: 'line',
+            data: { labels: [...evolucao].reverse().map(e => e.timestamp.slice(5,16)), datasets: [{ label: 'Risco Médio', data: [...evolucao].reverse().map(e => e.risco_medio), borderColor: '#ef4444', fill: true }] }
+        });
+    }
+    const tipos = {{ tipos_count|tojson }};
+    if (Object.keys(tipos).length) {
+        new Chart(document.getElementById('typeChart'), {
+            type: 'doughnut',
+            data: { labels: Object.keys(tipos), datasets: [{ data: Object.values(tipos), backgroundColor: ['#10b981','#3b82f6','#f59e0b','#ef4444'] }] }
+        });
+    }
+</script>
+</body>
+</html>

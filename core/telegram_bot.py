@@ -34,3 +34,26 @@ def alerta_porta(ip, porta, servico):
 def alerta_resumo(dados):
     msg = f"📊 SCAN FINALIZADO\nIPs: {dados.get('ips_ativos',0)}\nRisco: {dados.get('risco_medio',0)}/10"
     return enviar_telegram(msg)
+def enviar_pdf_telegram(caminho_pdf):
+    """Envia arquivo PDF via Telegram Bot"""
+    cfg = _get_config()
+    token = cfg.get("telegram_token", "")
+    chat_id = cfg.get("telegram_chat_id", "")
+    
+    if not token or not chat_id:
+        return False
+    
+    if not os.path.exists(caminho_pdf):
+        print(f"❌ PDF não encontrado: {caminho_pdf}")
+        return False
+    
+    try:
+        url = f"https://api.telegram.org/bot{token}/sendDocument"
+        with open(caminho_pdf, 'rb') as f:
+            files = {'document': f}
+            data = {'chat_id': chat_id, 'caption': '📄 Relatório InfraInsight - Scan completo'}
+            response = requests.post(url, files=files, data=data, timeout=30)
+        return response.status_code == 200
+    except Exception as e:
+        print(f"❌ Erro ao enviar PDF: {e}")
+        return False
