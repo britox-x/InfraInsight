@@ -1,23 +1,23 @@
 #!/bin/bash
-# Iniciar todos os serviços do InfraInsight
+echo "🚀 Iniciando InfraInsight..."
 
 cd /home/matheus/InfraInsight
 
 # Ativar ambiente virtual
 source venv/bin/activate
 
-# Iniciar dashboard (se não estiver rodando)
-if ! pgrep -f "python app.py" > /dev/null; then
+# 1. Iniciar Dashboard
+if ! pgrep -f "dashboard/app.py" > /dev/null; then
     cd dashboard
     nohup python app.py > dashboard.log 2>&1 &
-    echo "✅ Dashboard iniciado (porta 5000)"
     cd ..
+    echo "✅ Dashboard iniciado (porta 5000)"
 else
     echo "⚠️ Dashboard já está rodando"
 fi
 
-# Iniciar bot do Telegram (se não estiver rodando)
-if ! pgrep -f "telegram_bot_completo" > /dev/null; then
+# 2. Iniciar Bot Telegram (se não estiver rodando)
+if ! pgrep -f "telegram_bot_completo.py" > /dev/null; then
     nohup python core/telegram_bot_completo.py > telegram_bot.log 2>&1 &
     echo "✅ Bot Telegram iniciado"
 else
@@ -25,9 +25,8 @@ else
 fi
 
 echo ""
-echo "📊 Dashboard: http://localhost:5000"
-echo "🤖 Bot Telegram: @Infrainsight_bot"
-echo ""
-echo "Para ver logs:"
-echo "  Dashboard: tail -f dashboard/dashboard.log"
-echo "  Bot: tail -f telegram_bot.log"
+echo "=========================================="
+echo "📊 Dashboard: http://192.168.1.73:5000"
+echo "🤖 Bot: @Infrainsight_bot"
+echo "🔐 Login: admin / admin123"
+echo "=========================================="

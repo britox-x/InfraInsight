@@ -135,7 +135,12 @@ def index():
 @login_required
 def history():
     conn = get_db()
-    scans = conn.execute("SELECT id, timestamp, ips_ativos, uso, risco_medio, desconhecidos, mac_randomizados, recomendacao FROM scans ORDER BY id DESC").fetchall()
+    scans = conn.execute("""
+        SELECT id, timestamp, ips_ativos, uso, risco_medio, 
+               desconhecidos, mac_randomizados, recomendacao
+        FROM scans
+        ORDER BY id DESC
+    """).fetchall()
     conn.close()
     return render_template("history.html", scans=scans, username=current_user.username)
 

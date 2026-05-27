@@ -967,28 +967,28 @@
     },
     "5c:0f:fb:17:e0:d2": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-27T13:58:52.815835",
-        "frequencia": 20
+        "ultima_vista": "2026-05-27T15:33:01.829659",
+        "frequencia": 21
     },
     "c8:fe:0f:24:b5:7d": {
         "tipo": "camera_ip",
-        "ultima_vista": "2026-05-27T13:58:52.815835",
-        "frequencia": 19
+        "ultima_vista": "2026-05-27T15:33:01.829659",
+        "frequencia": 20
     },
     "60:92:c8:ea:e6:7a": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-27T00:03:56.324102",
-        "frequencia": 15
+        "ultima_vista": "2026-05-27T15:33:01.829659",
+        "frequencia": 16
     },
     "82:3b:86:72:0f:d8": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-27T00:03:56.324102",
-        "frequencia": 5
+        "ultima_vista": "2026-05-27T15:33:01.829659",
+        "frequencia": 6
     },
     "78:3e:a1:90:50:80": {
         "tipo": "roteador",
-        "ultima_vista": "2026-05-27T13:58:52.815835",
-        "frequencia": 21
+        "ultima_vista": "2026-05-27T15:33:01.829659",
+        "frequencia": 22
     },
     "24:4b:03:10:5d:98": {
         "tipo": "smarttv",
@@ -997,8 +997,8 @@
     },
     "92:dd:a1:07:a7:e3": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-27T13:58:52.815835",
-        "frequencia": 10
+        "ultima_vista": "2026-05-27T15:33:01.829659",
+        "frequencia": 11
     },
     "72:fb:ad:bd:65:96": {
         "tipo": "desconhecido",
