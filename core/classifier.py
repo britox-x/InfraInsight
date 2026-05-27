@@ -241,3 +241,16 @@ def classificar_dispositivo_randomizado(mac, hostname=""):
             return "mobile/windows", 2
     
     return "mobile/desconhecido", 3
+
+def nivel_identificacao(dispositivo):
+    """Classifica nível de identificação do dispositivo"""
+    # Conhecido: fabricante identificado
+    if dispositivo.get('fabricante') not in ['desconhecido', 'Unknown', 'local']:
+        return {"nivel": 3, "texto": "Conhecido", "cor": "🟢"}
+    
+    # Parcial: serviço/porta identificada
+    if dispositivo.get('open_ports'):
+        return {"nivel": 2, "texto": "Parcialmente identificado", "cor": "🟡"}
+    
+    # Desconhecido
+    return {"nivel": 1, "texto": "Desconhecido", "cor": "🔴"}

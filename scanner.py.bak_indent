@@ -85,19 +85,20 @@ def scan_port(ip, port, timeout=0.3):
 
 def scan_ports(ip, ports=None, timeout=0.3, max_workers=20):
     """
-    Escaneia portas em PARALELO (muito mais rapido)
+    Escaneia portas em PARALELO (muito mais rápido)
     
     Args:
-        ip: Endereco IP
-        ports: Lista de portas (padrao: portas comuns)
+        ip: Endereço IP
+        ports: Lista de portas (padrão: portas comuns)
         timeout: Timeout em segundos
-        max_workers: Numero maximo de threads paralelas
+        max_workers: Número máximo de threads paralelas
     
     Returns:
         Lista de portas abertas
     """
     if ports is None:
-        ports = [22, 23, 53, 80, 443, 554, 1900, 8080, 50000]
+        ports = [22, 23, 53, 80, 443, 554, 1900, 8080, 50000], 
+                 22, 23, 53, 80, 443, 554, 1900, 8080, 50000]
     
     open_ports = []
     
@@ -111,6 +112,7 @@ def scan_ports(ip, ports=None, timeout=0.3, max_workers=20):
                 open_ports.append(result)
     
     return sorted(open_ports)
+
 # Versão com cache para não re-escanear o mesmo IP
 PORTS_CACHE = {}
 
@@ -129,7 +131,7 @@ def scan_ports_with_cache(ip, ports=None, force=False):
 historical_scans = carregar_historico(limit=50)
 all_historical_devices = []
 for scan in historical_scans:
-        all_historical_devices.extend(scan.get("devices", []))
+    all_historical_devices.extend(scan.get('devices', []))
 
 print(f"[INFO] Carregados {len(historical_scans)} scans históricos")
 
@@ -423,7 +425,7 @@ if CONFIG.get("scan_wifi", False) and WIFI_AVAILABLE:
                 for rede in redes_wifi[:20]:
                     icone = "🔒" if rede.get('encrypted', True) else "🌐"
                     ssid = rede['ssid'][:28] if len(rede['ssid']) > 28 else rede['ssid']
-                    sinal = rede.get("sinal", rede.get("quality", "N/A"))
+                    sinal = rede.get('sinal', rede.get('quality', 'N/A'))
                     print(f"   {icone} {ssid:<30} {rede['bssid']:<20} {rede['channel']:<6} {sinal:<8}")
             else:
                 print("   Nenhuma rede Wi-Fi detectada")
@@ -456,19 +458,19 @@ for d in dispositivos_processados:
     # Alertas específicos por PORTA (dentro do loop!)
     if 23 in d.get('open_ports', []):
         alertas_gerados += 1
-        print(f"⚠️ SERVIÇO LEGADO DETECTADO: Telnet (porta 23) - Recomenda-se utilizar SSH")
+        print(f"⚠️ SERVIÇO LEGADO DETECTADO: Telnet (porta 23) - Recomenda-se utilizar SSH.
     
     if 445 in d.get('open_ports', []):
         alertas_gerados += 1
-        print(f"⚠️ SERVIÇO LEGADO DETECTADO: SMB (porta 445) - Avaliar necessidade de bloqueio")
+        print(f"⚠️ SERVIÇO LEGADO DETECTADO: SMB (porta 445) - Avaliar necessidade de bloqueio.
     
     if 554 in d.get('open_ports', []):
         alertas_gerados += 1
-        print(f"ℹ️ SERVIÇO MULTIMÍDIA DETECTADO: RTSP (porta 554) - Possível câmera IP")
+        print(f"ℹ️ SERVIÇO MULTIMÍDIA DETECTADO: RTSP (porta 554) - Possível câmera IP.
     
     if 3389 in d.get('open_ports', []):
         alertas_gerados += 1
-        print(f"ℹ️ ACESSO REMOTO DETECTADO: RDP (porta 3389) - Verificar políticas de acesso")
+        print(f"ℹ️ ACESSO REMOTO DETECTADO: RDP (porta 3389) - Verificar políticas de acesso.
 
 if alertas_gerados == 0:
     print(Colors.ok(" Nenhum alerta de segurança significativo detectado"))
