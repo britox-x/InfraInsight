@@ -967,18 +967,18 @@
     },
     "5c:0f:fb:17:e0:d2": {
         "tipo": "smarttv",
-        "ultima_vista": "2026-06-09T17:07:01.426605",
-        "frequencia": 42
+        "ultima_vista": "2026-06-09T17:31:33.682225",
+        "frequencia": 48
     },
     "c8:fe:0f:24:b5:7d": {
         "tipo": "camera_ip",
-        "ultima_vista": "2026-06-09T17:07:01.426605",
-        "frequencia": 40
+        "ultima_vista": "2026-06-09T17:31:33.682225",
+        "frequencia": 46
     },
     "60:92:c8:ea:e6:7a": {
-        "tipo": "mobile/android",
-        "ultima_vista": "2026-06-09T17:07:01.426605",
-        "frequencia": 34
+        "tipo": "roku",
+        "ultima_vista": "2026-06-09T17:31:33.682225",
+        "frequencia": 40
     },
     "82:3b:86:72:0f:d8": {
         "tipo": "desconhecido",
@@ -987,18 +987,18 @@
     },
     "78:3e:a1:90:50:80": {
         "tipo": "roteador",
-        "ultima_vista": "2026-06-09T17:07:01.426605",
-        "frequencia": 43
+        "ultima_vista": "2026-06-09T17:31:33.682225",
+        "frequencia": 49
     },
     "24:4b:03:10:5d:98": {
         "tipo": "smarttv",
-        "ultima_vista": "2026-06-09T17:07:01.426605",
-        "frequencia": 31
+        "ultima_vista": "2026-06-09T17:31:33.682225",
+        "frequencia": 37
     },
     "92:dd:a1:07:a7:e3": {
-        "tipo": "desconhecido",
-        "ultima_vista": "2026-06-09T16:44:15.087455",
-        "frequencia": 19
+        "tipo": "mobile/android",
+        "ultima_vista": "2026-06-09T17:31:33.682225",
+        "frequencia": 25
     },
     "72:fb:ad:bd:65:96": {
         "tipo": "desconhecido",
@@ -1011,9 +1011,9 @@
         "frequencia": 1
     },
     "2a:fa:67:88:b4:9e": {
-        "tipo": "desconhecido",
-        "ultima_vista": "2026-06-09T16:44:15.087455",
-        "frequencia": 16
+        "tipo": "mobile/android",
+        "ultima_vista": "2026-06-09T17:31:33.682225",
+        "frequencia": 21
     },
     "32:8f:08:70:4e:eb": {
         "tipo": "desconhecido",
@@ -1442,7 +1442,7 @@
     },
     "56:6e:b6:e9:bf:15": {
         "tipo": "mobile/android",
-        "ultima_vista": "2026-06-09T17:07:01.426605",
-        "frequencia": 7
+        "ultima_vista": "2026-06-09T17:31:33.682225",
+        "frequencia": 13
     }
 }

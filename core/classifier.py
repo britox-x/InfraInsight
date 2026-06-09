@@ -21,6 +21,13 @@ def classificar_dispositivo(hostname="", vendor="", ip="", mac="", open_ports=No
     vendor = (vendor or "").lower()
     ip = ip or ""
     mac = mac or ""
+
+    # =========================
+    # ROKU (prioridade máxima - identificação por MAC ou porta)
+    # =========================
+    if mac.startswith('60:92:c8') or 8060 in open_ports:
+        return "roku", 1
+
     
     # =========================
     # Amino (set-top box / TV Box)
@@ -132,6 +139,22 @@ def classificar_dispositivo(hostname="", vendor="", ip="", mac="", open_ports=No
     # =========================
     if vendor == "unknown" and (5353 in open_ports or 5555 in open_ports):
         return "mobile/android", 2
+
+    # =========================
+    # Prefixos MAC específicos (Android/Dispositivos móveis)
+    # =========================
+    if mac.startswith(('92:dd:a1', '2a:fa:67')):
+        return "mobile/android", 2
+    # =========================
+    # Roku (porta 8060 aberta)
+    # =========================
+    if 8060 in open_ports:
+        return "roku", 2
+    
+    # Prefixo MAC Roku
+    if mac.startswith('60:92:c8'):
+        return "roku", 2
+
     
     # =========================
     # Fallback
