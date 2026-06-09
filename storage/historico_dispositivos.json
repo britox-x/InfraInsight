@@ -2,40 +2,40 @@
     "3c:84:6a:d7:3f:36": {
         "tipo": "roteador",
         "primeira_vista": "2026-05-20T11:16:10.346525",
-        "ultima_vista": "2026-05-27T13:15:47.097499",
-        "frequencia": 53,
+        "ultima_vista": "2026-05-28T09:07:32.781767",
+        "frequencia": 54,
         "ultimo_risco": 4,
         "ultima_severidade": "M\u00e9dio"
     },
     "46:ed:16:2a:53:d8": {
         "tipo": "desconhecido",
         "primeira_vista": "2026-05-20T11:16:10.346525",
-        "ultima_vista": "2026-05-27T12:15:55.696271",
-        "frequencia": 22,
+        "ultima_vista": "2026-05-28T09:07:32.781767",
+        "frequencia": 23,
         "ultimo_risco": 1,
         "ultima_severidade": "Baixo"
     },
     "a0:0f:37:7b:23:60": {
         "tipo": "infraestrutura",
         "primeira_vista": "2026-05-20T11:16:10.346525",
-        "ultima_vista": "2026-05-27T13:15:47.097499",
-        "frequencia": 53,
+        "ultima_vista": "2026-05-28T09:07:32.781767",
+        "frequencia": 54,
         "ultimo_risco": 1,
         "ultima_severidade": "Baixo"
     },
     "50:3e:aa:7e:95:1b": {
         "tipo": "switch/rede",
         "primeira_vista": "2026-05-20T11:16:10.346525",
-        "ultima_vista": "2026-05-27T13:15:47.097499",
-        "frequencia": 38,
+        "ultima_vista": "2026-05-28T09:07:32.781767",
+        "frequencia": 39,
         "ultimo_risco": 1,
         "ultima_severidade": "Baixo"
     },
     "50:3e:aa:7e:59:16": {
         "tipo": "switch/rede",
         "primeira_vista": "2026-05-20T11:16:10.346525",
-        "ultima_vista": "2026-05-27T13:15:47.097499",
-        "frequencia": 39,
+        "ultima_vista": "2026-05-28T09:07:32.781767",
+        "frequencia": 40,
         "ultimo_risco": 1,
         "ultima_severidade": "Baixo"
     },
@@ -48,8 +48,8 @@
     "1e:9f:d1:ba:c6:a1": {
         "tipo": "desconhecido",
         "primeira_vista": "2026-05-20T12:08:15.825317",
-        "ultima_vista": "2026-05-27T13:15:47.097499",
-        "frequencia": 39,
+        "ultima_vista": "2026-05-28T09:07:32.781767",
+        "frequencia": 40,
         "ultimo_risco": 1,
         "ultima_severidade": "Baixo"
     },
@@ -560,75 +560,75 @@
     "62:9f:82:5c:af:db": {
         "tipo": "desconhecido",
         "primeira_vista": "2026-05-21T08:36:13.738126",
-        "ultima_vista": "2026-05-21T12:57:56.204261",
-        "frequencia": 7,
+        "ultima_vista": "2026-05-28T09:07:32.781767",
+        "frequencia": 8,
         "ultimo_risco": 1,
         "ultima_severidade": "Baixo"
     },
     "d8:36:5f:9a:3d:f5": {
         "tipo": "roteador",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "74:ac:b9:69:3d:03": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "d0:21:f9:3c:7f:84": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "1c:6a:1b:27:d2:79": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "1c:6a:1b:27:81:41": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "d0:21:f9:3c:82:25": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "1c:6a:1b:27:4b:71": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "1c:6a:1b:27:cf:c1": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "32:25:6f:88:7f:f9": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:03:56.582571",
-        "frequencia": 2
+        "ultima_vista": "2026-05-28T10:01:44.755718",
+        "frequencia": 3
     },
     "c6:22:0f:a0:f0:af": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "50:3e:aa:7e:7a:a0": {
         "tipo": "switch/rede",
-        "ultima_vista": "2026-05-21T11:10:10.244504",
-        "frequencia": 1
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
     },
     "a2:b6:d1:fa:81:a0": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T11:10:10.244504",
-        "frequencia": 1
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
     },
     "56:c2:69:72:6d:47": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 2
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 3
     },
     "aa:8c:06:cd:b4:d8": {
         "tipo": "desconhecido",
@@ -642,88 +642,88 @@
     },
     "3e:0a:73:b7:cb:13": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 4
     },
     "f4:28:9d:0e:8f:c1": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "f4:28:9d:0f:0c:75": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "be:7f:7d:b4:a0:6f": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "70:68:71:94:2c:00": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T11:10:10.244504",
-        "frequencia": 1
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 3
     },
     "9a:48:9d:37:7a:d6": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T11:10:10.244504",
-        "frequencia": 1
+        "ultima_vista": "2026-05-28T10:01:44.755718",
+        "frequencia": 2
     },
     "74:ac:b9:69:3c:ea": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "74:ac:b9:69:3b:7e": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "74:ac:b9:69:3b:d5": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "96:a7:bd:aa:6f:94": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:03:56.582571",
-        "frequencia": 2
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 4
     },
     "00:d7:6d:6e:ef:b5": {
         "tipo": "computador_conhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "f4:28:9d:0f:0c:77": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "f4:28:9d:0f:0c:93": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "d0:21:f9:3c:7d:28": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "5e:f2:e9:ce:de:db": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 2
+        "ultima_vista": "2026-05-28T10:01:44.755718",
+        "frequencia": 3
     },
     "74:ac:b9:69:42:c5": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "f4:28:9d:79:f6:07": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "70:68:71:94:3d:08": {
         "tipo": "desconhecido",
@@ -737,28 +737,28 @@
     },
     "8c:e5:c0:de:14:00": {
         "tipo": "smarttv",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 4
     },
     "e6:fa:eb:89:c0:36": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 2
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 4
     },
     "86:d1:51:f3:85:dd": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:03:56.582571",
-        "frequencia": 2
+        "ultima_vista": "2026-05-28T10:01:44.755718",
+        "frequencia": 3
     },
     "a6:b7:8b:92:b5:4c": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:03:56.582571",
-        "frequencia": 2
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 4
     },
     "50:3e:aa:7e:bd:5b": {
         "tipo": "roteador",
-        "ultima_vista": "2026-05-21T12:03:56.582571",
-        "frequencia": 2
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 4
     },
     "32:5e:14:9b:20:fa": {
         "tipo": "desconhecido",
@@ -772,13 +772,13 @@
     },
     "70:68:71:94:40:60": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T11:10:10.244504",
-        "frequencia": 1
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 3
     },
     "f4:28:9d:0f:11:19": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "5c:cd:5b:71:d5:5e": {
         "tipo": "computador_conhecido",
@@ -787,23 +787,23 @@
     },
     "fc:01:7c:fe:3a:01": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "62:1c:82:c9:f9:b3": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T11:10:10.244504",
-        "frequencia": 1
+        "ultima_vista": "2026-05-28T10:01:44.755718",
+        "frequencia": 2
     },
     "b2:49:d5:76:7f:5d": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T11:10:10.244504",
-        "frequencia": 1
+        "ultima_vista": "2026-05-28T10:01:44.755718",
+        "frequencia": 2
     },
     "f4:28:9d:0e:8f:dd": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "22:42:e4:a4:56:99": {
         "tipo": "desconhecido",
@@ -812,8 +812,8 @@
     },
     "9e:18:e8:c7:82:a7": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T11:10:10.244504",
-        "frequencia": 1
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 3
     },
     "5e:99:fe:2f:e6:2e": {
         "tipo": "desconhecido",
@@ -822,8 +822,8 @@
     },
     "f6:5c:d7:91:67:17": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "ca:72:20:ab:fd:bc": {
         "tipo": "desconhecido",
@@ -832,8 +832,8 @@
     },
     "1c:cc:d6:b7:ed:5f": {
         "tipo": "mobile/android",
-        "ultima_vista": "2026-05-21T11:10:10.244504",
-        "frequencia": 1
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 3
     },
     "2e:4d:67:a7:25:e4": {
         "tipo": "desconhecido",
@@ -842,8 +842,8 @@
     },
     "f4:28:9d:0e:8c:6b": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:01:44.755718",
+        "frequencia": 4
     },
     "f4:28:9d:0f:10:ff": {
         "tipo": "desconhecido",
@@ -867,18 +867,18 @@
     },
     "9e:01:d0:16:44:50": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:03:56.582571",
-        "frequencia": 2
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 4
     },
     "1c:6a:1b:26:d6:54": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "74:ac:b9:69:39:e3": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 3
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 5
     },
     "1a:9c:a6:c6:6f:04": {
         "tipo": "desconhecido",
@@ -892,13 +892,13 @@
     },
     "aa:0f:a7:f6:a3:4f": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:03:56.582571",
-        "frequencia": 1
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
     },
     "36:50:d8:c1:ef:65": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 2
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 3
     },
     "b2:52:e2:9e:2c:4d": {
         "tipo": "desconhecido",
@@ -912,13 +912,13 @@
     },
     "5c:51:4f:58:8b:9e": {
         "tipo": "computador_conhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 2
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 4
     },
     "06:e7:92:52:0e:ce": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-21T12:13:33.116532",
-        "frequencia": 2
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 4
     },
     "6e:3d:e7:eb:00:74": {
         "tipo": "desconhecido",
@@ -962,48 +962,48 @@
     },
     "c4:6e:1f:f3:a9:ef": {
         "tipo": "roteador",
-        "ultima_vista": "2026-05-27T16:08:17.459828",
-        "frequencia": 29
+        "ultima_vista": "2026-05-27T16:29:43.781189",
+        "frequencia": 30
     },
     "5c:0f:fb:17:e0:d2": {
-        "tipo": "desconhecido",
-        "ultima_vista": "2026-05-27T15:33:01.829659",
-        "frequencia": 21
+        "tipo": "smarttv",
+        "ultima_vista": "2026-06-09T17:07:01.426605",
+        "frequencia": 42
     },
     "c8:fe:0f:24:b5:7d": {
         "tipo": "camera_ip",
-        "ultima_vista": "2026-05-27T15:33:01.829659",
-        "frequencia": 20
+        "ultima_vista": "2026-06-09T17:07:01.426605",
+        "frequencia": 40
     },
     "60:92:c8:ea:e6:7a": {
-        "tipo": "desconhecido",
-        "ultima_vista": "2026-05-27T15:33:01.829659",
-        "frequencia": 16
+        "tipo": "mobile/android",
+        "ultima_vista": "2026-06-09T17:07:01.426605",
+        "frequencia": 34
     },
     "82:3b:86:72:0f:d8": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-27T15:33:01.829659",
-        "frequencia": 6
+        "ultima_vista": "2026-06-02T00:00:16.831646",
+        "frequencia": 10
     },
     "78:3e:a1:90:50:80": {
         "tipo": "roteador",
-        "ultima_vista": "2026-05-27T15:33:01.829659",
-        "frequencia": 22
+        "ultima_vista": "2026-06-09T17:07:01.426605",
+        "frequencia": 43
     },
     "24:4b:03:10:5d:98": {
         "tipo": "smarttv",
-        "ultima_vista": "2026-05-27T00:00:12.829252",
-        "frequencia": 12
+        "ultima_vista": "2026-06-09T17:07:01.426605",
+        "frequencia": 31
     },
     "92:dd:a1:07:a7:e3": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-27T15:33:01.829659",
-        "frequencia": 11
+        "ultima_vista": "2026-06-09T16:44:15.087455",
+        "frequencia": 19
     },
     "72:fb:ad:bd:65:96": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-27T16:08:17.459828",
-        "frequencia": 11
+        "ultima_vista": "2026-05-27T16:29:43.781189",
+        "frequencia": 12
     },
     "66:ac:d4:04:17:9b": {
         "tipo": "desconhecido",
@@ -1012,8 +1012,8 @@
     },
     "2a:fa:67:88:b4:9e": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-27T13:58:52.815835",
-        "frequencia": 7
+        "ultima_vista": "2026-06-09T16:44:15.087455",
+        "frequencia": 16
     },
     "32:8f:08:70:4e:eb": {
         "tipo": "desconhecido",
@@ -1024,5 +1024,425 @@
         "tipo": "desconhecido",
         "ultima_vista": "2026-05-27T09:21:27.860342",
         "frequencia": 2
+    },
+    "1e:d8:e0:93:35:c8": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "08:f9:7e:7e:56:a9": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "5e:c3:99:33:f8:c3": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "22:6c:1d:83:cf:aa": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "ca:a9:f0:93:dd:e1": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "0a:81:b5:dd:91:02": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "ae:1a:51:e9:3c:73": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "28:d0:43:eb:d2:fb": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "12:4a:48:f9:4c:16": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:01:44.755718",
+        "frequencia": 1
+    },
+    "08:f9:7e:48:fc:af": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "da:a4:cd:8d:36:e7": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "8a:c4:5b:f7:34:03": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "8e:9f:29:c5:4a:91": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "0e:44:3a:bf:e6:a6": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "1e:5b:f1:a6:90:1c": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "52:43:ca:09:9d:d8": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:01:44.755718",
+        "frequencia": 1
+    },
+    "d6:c7:e6:9a:3b:c2": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "ce:3e:c0:80:c6:38": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "c6:5d:55:59:db:ca": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "92:71:60:08:98:9a": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "8e:dd:82:88:44:d7": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "64:eb:8c:a4:1b:bd": {
+        "tipo": "impressora",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "74:3a:f4:94:66:d2": {
+        "tipo": "computador_conhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "ee:d7:22:80:7c:1f": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "3a:a5:69:69:dc:42": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "92:00:e2:b3:4f:30": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "2e:b0:da:2f:43:41": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "7e:8a:7c:64:48:25": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "08:f9:7e:49:0e:51": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "70:68:71:57:4f:9c": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "ea:c1:d3:69:1e:5d": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "f4:28:9d:0f:11:03": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "0a:e9:f1:58:1f:f4": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "12:81:e5:b7:29:d5": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "00:d7:6d:6e:d8:68": {
+        "tipo": "computador_conhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "08:f9:7e:49:03:83": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "b8:1e:a4:fe:87:07": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "24:18:c6:05:cd:5a": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "f4:28:9d:78:dd:13": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "da:56:2b:c8:ed:8e": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "5c:cd:5b:bf:10:3f": {
+        "tipo": "computador_conhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "e8:fb:1c:a0:65:f1": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "62:9d:9c:d3:76:4d": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:01:44.755718",
+        "frequencia": 1
+    },
+    "3a:9f:1e:a5:89:88": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "ee:73:1e:f5:16:32": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:01:44.755718",
+        "frequencia": 1
+    },
+    "da:2a:17:49:9c:9a": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:01:44.755718",
+        "frequencia": 1
+    },
+    "d4:6e:0e:0c:fe:f6": {
+        "tipo": "switch/rede",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "a6:e9:66:e4:47:f3": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:01:44.755718",
+        "frequencia": 1
+    },
+    "a6:8c:0b:fe:5c:be": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:01:44.755718",
+        "frequencia": 1
+    },
+    "5a:0e:dc:fe:26:29": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "d4:6e:0e:0c:ff:25": {
+        "tipo": "switch/rede",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "f4:28:9d:0e:8b:b9": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:01:44.755718",
+        "frequencia": 1
+    },
+    "de:2d:28:2a:75:dd": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "70:68:71:94:3b:e8": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 2
+    },
+    "a6:9e:be:a8:c9:95": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "0a:62:fa:73:6b:d9": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "3e:02:49:73:46:27": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "28:d0:43:ea:e4:8f": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "5a:72:a6:f1:94:2b": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "da:d7:55:f9:2d:e7": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "aa:df:86:18:c3:46": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "82:ea:9c:ba:22:c9": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "c2:cf:e3:28:ec:8a": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "c2:e1:c8:a2:b0:86": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "e6:5d:70:b7:d4:ae": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "08:f9:7e:49:0e:57": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "70:32:17:3b:f4:5c": {
+        "tipo": "computador_conhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "28:d0:43:eb:36:11": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "2e:0f:03:4f:68:d7": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "6a:77:31:51:47:35": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "f2:60:cd:cb:91:6f": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "58:d9:c3:4b:a7:ec": {
+        "tipo": "computador_conhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "42:08:61:26:4b:d2": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "0a:ba:17:c6:07:0f": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "96:58:1d:2d:af:7d": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "e2:73:3e:82:da:c6": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "ae:94:d1:b3:c6:12": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "82:b1:08:d3:2e:cf": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "ae:68:83:ae:74:e9": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-28T10:16:11.386565",
+        "frequencia": 1
+    },
+    "22:e5:f5:f7:d7:81": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-30T12:00:13.555878",
+        "frequencia": 2
+    },
+    "a6:0e:59:0f:fb:5e": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-29T18:00:14.724853",
+        "frequencia": 1
+    },
+    "0e:b8:c4:43:da:f8": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-05-30T12:00:13.555878",
+        "frequencia": 1
+    },
+    "7e:2a:ec:4a:22:70": {
+        "tipo": "desconhecido",
+        "ultima_vista": "2026-06-08T00:00:21.435192",
+        "frequencia": 2
+    },
+    "56:6e:b6:e9:bf:15": {
+        "tipo": "mobile/android",
+        "ultima_vista": "2026-06-09T17:07:01.426605",
+        "frequencia": 7
     }
 }

@@ -7,6 +7,7 @@ import threading
 import subprocess
 import sqlite3
 from datetime import datetime
+from core.wifi_scanner import scan_wifi_completo, listar_interfaces_wifi
 
 CONFIG_PATH = "config.json"
 
@@ -16,7 +17,7 @@ def _get_config():
             return json.load(f)
     return {}
 
-def enviar_mensagem(chat_id, texto, parse_mode='HTML'):
+def enviar_mensagem(chat_id, texto, parse_mode='Markdown'):
     cfg = _get_config()
     token = cfg.get("telegram_token", "")
     if not token:
@@ -73,7 +74,6 @@ def obter_dashboard_url():
     import subprocess
     import socket
     try:
-        # Tentar obter IP real
         result = subprocess.run(['hostname', '-I'], capture_output=True, text=True)
         ip = result.stdout.strip().split()[0]
         return f"http://{ip}:5000"
@@ -82,18 +82,11 @@ def obter_dashboard_url():
 
 def executar_scan():
     try:
-        import subprocess
-        # Usar o python do venv diretamente
         resultado = subprocess.run(
             ['/home/matheus/InfraInsight/venv/bin/python', '/home/matheus/InfraInsight/scanner.py'],
-            capture_output=True,
-            text=True,
-            timeout=180,
-            cwd='/home/matheus/InfraInsight'
+            capture_output=True, text=True, timeout=180, cwd='/home/matheus/InfraInsight'
         )
         print(f"[BOT] Scan return code: {resultado.returncode}")
-        if resultado.returncode != 0:
-            print(f"[BOT] Erro: {resultado.stderr[:200]}")
         return resultado.returncode == 0
     except subprocess.TimeoutExpired:
         print("[BOT] Scan timeout")
@@ -102,78 +95,139 @@ def executar_scan():
         print(f"[BOT] Erro: {e}")
         return False
 
-
-
 def processar_comando(texto, chat_id):
     texto = texto.lower().strip()
     print(f"Comando: {texto}")
     
     if texto == '/start':
-        msg = "🔒 INFRAINSIGHT BOT\n\nComandos: /status, /scan, /report, /dashboard, /help"
+        msg = """
+🔒 *INFRAINSIGHT - Monitor da sua rede*
+
+Olá! Vou te ajudar a cuidar da sua rede de forma simples.
+
+*O que você quer fazer?*
+
+🔍 *Ver rede agora* → /scan
+📊 *Status atual* → /status  
+📄 *Relatório completo* → /report
+🌐 *Redes Wi-Fi* → /wifi
+❓ *Ajuda* → /help
+
+*Dica:* O /scan pode levar 30 segundos. Aguarde!
+        """
         enviar_mensagem(chat_id, msg)
     
     elif texto == '/help':
-        msg = """🤖 INFRAINSIGHT BOT - COMANDOS
+        msg = """
+🤖 *INFRAINSIGHT - AJUDA*
 
-📊 Informações
-/status - Status atual da rede
-/scan - Executar novo scan
-/report - Baixar último relatório PDF
-/dashboard - Link do dashboard
+*Comandos disponíveis:*
 
-❓ Ajuda
-/help - Mostrar esta ajuda"""
+📊 *Informações*
+/status - Ver saúde da rede
+/scan - Escanear dispositivos agora
+/report - Baixar relatório completo
+/dashboard - Link para painel admin
+
+📡 *Wi-Fi*
+/wifi - Ver redes próximas
+
+❓ *Ajuda*
+/help - Mostrar esta ajuda
+/start - Mensagem inicial
+        """
         enviar_mensagem(chat_id, msg)
     
     elif texto == '/status':
         scan = obter_ultimo_scan()
         if scan:
-            msg = f"📊 STATUS\nData: {scan['timestamp']}\nDispositivos: {scan['dispositivos']}\nRisco: {scan['risco']}/10"
+            if scan['risco'] <= 2:
+                status_emoji = "✅"
+                status_texto = "Tudo seguro!"
+            elif scan['risco'] <= 5:
+                status_emoji = "⚠️"
+                status_texto = "Alguns cuidados necessários"
+            else:
+                status_emoji = "🔴"
+                status_texto = "Risco detectado!"
+            
+            msg = f"""
+{status_emoji} *SAÚDE DA SUA REDE*
+
+📡 *Dispositivos conectados:* {scan['dispositivos']}
+📊 *Nível de segurança:* {status_texto}
+⚠️ *Risco:* {scan['risco']}/10
+
+📱 *Para detalhes:* /report
+            """
         else:
-            msg = "Nenhum scan. Use /scan"
+            msg = "❌ *Ainda não fiz nenhum scan.*\n\nDigite /scan para começar!"
         enviar_mensagem(chat_id, msg)
     
     elif texto == '/scan':
-        enviar_mensagem(chat_id, "🔍 Iniciando scan... (30-60 segundos)")
+        enviar_mensagem(chat_id, "🔍 *Iniciando verificação da rede...*\n\nAguarde! ⏳")
         def scan_thread():
             if executar_scan():
                 scan = obter_ultimo_scan()
                 if scan:
-                    enviar_mensagem(chat_id, f"✅ SCAN CONCLUIDO!\nDispositivos: {scan['dispositivos']}\nRisco: {scan['risco']}/10")
+                    msg = f"""
+✅ *VERIFICAÇÃO CONCLUÍDA!*
+
+📡 *Encontrei {scan['dispositivos']} dispositivos*
+📊 *Nível de segurança:* {scan['risco']}/10
+
+📄 *Relatório completo:* /report
+                    """
+                    enviar_mensagem(chat_id, msg)
                 else:
-                    enviar_mensagem(chat_id, "✅ Scan concluido!")
+                    enviar_mensagem(chat_id, "✅ Verificação concluída!")
             else:
-                enviar_mensagem(chat_id, "❌ Erro no scan")
+                enviar_mensagem(chat_id, "❌ *Ops!* Não consegui fazer a verificação.")
         threading.Thread(target=scan_thread, daemon=True).start()
     
     elif texto == '/dashboard':
         url = obter_dashboard_url()
-        enviar_mensagem(chat_id, f"📊 Dashboard: {url}")
+        enviar_mensagem(chat_id, f"📊 *Dashboard:* {url}")
     
     elif texto == '/report':
-        enviar_mensagem(chat_id, "📄 Buscando relatorio...")
+        enviar_mensagem(chat_id, "📄 *Buscando relatório...*")
         pdf = encontrar_ultimo_pdf()
         if pdf:
             enviar_pdf(chat_id, pdf)
         else:
-            enviar_mensagem(chat_id, "❌ Nenhum relatorio. Execute /scan")
+            enviar_mensagem(chat_id, "❌ *Nenhum relatório.* Execute /scan primeiro.")
     
-    elif texto == '/ip':
-        import subprocess
-        try:
-            result = subprocess.run(['hostname', '-I'], capture_output=True, text=True)
-            ip = result.stdout.strip().split()[0]
-            enviar_mensagem(chat_id, f"🌐 IP: {ip}\nDashboard: http://{ip}:5000")
-        except:
-            enviar_mensagem(chat_id, "❌ Erro ao obter IP")
+    elif texto == '/wifi':
+        enviar_mensagem(chat_id, "📡 *Procurando redes Wi-Fi...*")
+        def wifi_thread():
+            try:
+                interfaces = listar_interfaces_wifi()
+                if not interfaces:
+                    enviar_mensagem(chat_id, "❌ *Nenhuma interface Wi-Fi encontrada.*")
+                    return
+                redes = scan_wifi_completo(interfaces[0])
+                if not redes:
+                    enviar_mensagem(chat_id, "📡 *Nenhuma rede Wi-Fi encontrada.*")
+                    return
+                msg = "*📡 REDES WI-FI ENCONTRADAS*\n\n"
+                for rede in redes[:15]:
+                    icone = "🔒" if rede.get('encrypted', True) else "🌐"
+                    ssid = rede.get('ssid', 'Rede Oculta')[:30]
+                    sinal_texto = rede.get('sinal_texto', '📶 Desconhecido')
+                    seguranca = rede.get('encryption_type', 'Desconhecida')
+                    msg += f"{icone} *{ssid}*\n   {sinal_texto}\n   🔐 {seguranca}\n\n"
+                enviar_mensagem(chat_id, msg)
+            except Exception as e:
+                enviar_mensagem(chat_id, f"❌ *Erro:* {str(e)[:100]}")
+        threading.Thread(target=wifi_thread, daemon=True).start()
     
     else:
-        enviar_mensagem(chat_id, f"❌ Comando '{texto}' nao reconhecido. Use /help")
+        enviar_mensagem(chat_id, f"❌ *Comando '{texto}' não reconhecido.* Use /help")
 
 def iniciar_bot():
     print("="*50)
     print("Bot Telegram INFRAINSIGHT ativo!")
-    print("Comandos: /status, /scan, /report, /dashboard, /help")
+    print("Comandos: /status, /scan, /report, /dashboard, /wifi, /help")
     print("="*50)
     last_id = 0
     while True:

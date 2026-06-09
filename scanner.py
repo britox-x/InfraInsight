@@ -435,6 +435,21 @@ if CONFIG.get("scan_wifi", False) and WIFI_AVAILABLE:
     except Exception as e:
         print(f"   ⚠️ Erro no scan Wi-Fi: {e}")
 
+# ============================================================
+# VERIFICAÇÃO DE SEGURANÇA DOS ROTEADORES
+# ============================================================
+try:
+    from core.router_login import gerar_alerta_seguranca
+    
+    for d in dispositivos_processados:
+        if d.get('tipo') == 'roteador':
+            alertas_router = gerar_alerta_seguranca(d['ip'], d.get('fabricante', ''))
+            for alerta in alertas_router:
+                print(f"   {alerta}")
+                alertas_gerados += 1
+except ImportError:
+    pass  # Módulo não disponível
+
 # =========================
 # Alertas de segurança
 # =========================

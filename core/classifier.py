@@ -23,22 +23,21 @@ def classificar_dispositivo(hostname="", vendor="", ip="", mac="", open_ports=No
     mac = mac or ""
     
     # =========================
+    # Amino (set-top box / TV Box)
+    # =========================
+    if "amino" in vendor:
+        return "smarttv", 2
+    
+    # =========================
     # TP-Link
     # =========================
     if "tp-link" in vendor:
-        # Verifica se é gateway (IP .1 ou .254)
         if ip.endswith(".1") or ip.endswith(".254"):
             return "roteador", 1
-        
-        # Verifica por hostnames de roteador
         if any(x in hostname for x in ["router", "gateway", "archer", "tplink", "deco"]):
             return "roteador", 1
-        
-        # Verifica portas comuns de roteador
         if 80 in open_ports or 443 in open_ports or 53 in open_ports:
             return "roteador", 1
-        
-        # Padrão para outros dispositivos TP-Link
         return "switch/rede", 2
     
     # =========================
@@ -67,6 +66,8 @@ def classificar_dispositivo(hostname="", vendor="", ip="", mac="", open_ports=No
     if "apple" in vendor:
         if "iphone" in hostname or "ipad" in hostname:
             return "mobile/ios", 2
+        if "apple tv" in hostname:
+            return "smarttv", 2
         return "mobile/apple", 2
     
     # =========================
@@ -74,7 +75,6 @@ def classificar_dispositivo(hostname="", vendor="", ip="", mac="", open_ports=No
     # =========================
     if any(x in vendor for x in ["espressif", "tuya", "wemos", "node mcu"]):
         return "iot", 3
-    
     if any(x in vendor for x in ["hikvision", "dahua"]):
         return "camera", 3
     
@@ -87,7 +87,7 @@ def classificar_dispositivo(hostname="", vendor="", ip="", mac="", open_ports=No
     # =========================
     # Impressoras
     # =========================
-    if any(x in vendor for x in ["brother", "epson", "canon", "kyocera", "hp"]):
+    if any(x in vendor for x in ["brother", "epson", "canon", "kyocera"]):
         return "impressora", 2
     
     # =========================
@@ -105,19 +105,45 @@ def classificar_dispositivo(hostname="", vendor="", ip="", mac="", open_ports=No
         return "mobile/desconhecido", 3
     
     # =========================
+    # Porta 5353 (mDNS) - comum em smartphones e smart TVs
+    # =========================
+    if 5353 in open_ports:
+        return "smart_device", 2
+    
+    # =========================
+    # Windows (porta 445 ou 3389)
+    # =========================
+    if 445 in open_ports or 3389 in open_ports:
+        return "computador_windows", 2
+    
+    # =========================
+    # Linux (porta 22 e 80)
+    # =========================
+    if 22 in open_ports and 80 in open_ports:
+        return "computador_linux", 2
+    # =========================
+    # Prefixos MAC específicos (Android)
+    # =========================
+    if mac.startswith(('56:6e:b6', '60:92:c8')):
+        return "mobile/android", 2
+    
+    # =========================
+    # Fabricantes desconhecidos que são móveis
+    # =========================
+    if vendor == "unknown" and (5353 in open_ports or 5555 in open_ports):
+        return "mobile/android", 2
+    
+    # =========================
     # Fallback
     # =========================
     return "desconhecido", 5
 
 
 def identificar_tipo_por_mac(mac):
-    """
-    Identifica o tipo do dispositivo baseado no prefixo MAC (OUI)
-    """
+    """Identifica o tipo do dispositivo baseado no prefixo MAC (OUI)"""
     if not mac or mac == "desconhecido":
         return None
     
-    # Prefixos de MAC conhecidos
     tipos_por_mac = {
         "50:3e:aa": "switch/rede",
         "3c:84:6a": "roteador",
@@ -129,34 +155,25 @@ def identificar_tipo_por_mac(mac):
     for prefixo, tipo in tipos_por_mac.items():
         if mac_upper.startswith(prefixo.upper()):
             return tipo
-    
     return None
+
+
 def classificar_dispositivo_randomizado(mac, hostname=""):
-    """
-    Classifica dispositivos com MAC randomizado baseado em padrões
-    """
+    """Classifica dispositivos com MAC randomizado baseado em padrões"""
     mac_prefix = mac[:8].upper() if mac else ""
     hostname = (hostname or "").lower()
     
-    # Padrões de MAC randomizado por fabricante/família
-    # Android: 46:, 4e:, 5e:, 6a:, 2a:, 3a:, 7a:, 8a:, 9a:
     android_prefixes = ['46:', '4E:', '5E:', '6A:', '2A:', '3A:', '7A:', '8A:', '9A:', 'AE:', 'BE:', 'CE:', 'DE:', 'EE:', 'FE:']
-    
-    # iOS: 2a:, 4a:, 6a:, 8a:, 9a:, ba:, ca:, da:, ea:, fa:
     ios_prefixes = ['2A:', '4A:', '6A:', '8A:', '9A:', 'BA:', 'CA:', 'DA:', 'EA:', 'FA:']
-    
-    # Windows: 1e:, 3e:, 5e:, 7e:, 9e:, be:, de:, fe:
     windows_prefixes = ['1E:', '3E:', '5E:', '7E:', '9E:', 'BE:', 'DE:', 'FE:']
     
-    # Por hostname
-    if 'android' in hostname or 'xiaomi' in hostname or 'samsung' in hostname:
+    if 'android' in hostname or 'xiaomi' in hostname:
         return "mobile/android", 2
     if 'iphone' in hostname or 'ipad' in hostname or 'apple' in hostname:
         return "mobile/ios", 2
     if 'windows' in hostname or 'win' in hostname:
         return "mobile/windows", 2
     
-    # Por MAC
     for prefix in android_prefixes:
         if mac_prefix.startswith(prefix):
             return "mobile/android", 2
@@ -167,90 +184,51 @@ def classificar_dispositivo_randomizado(mac, hostname=""):
         if mac_prefix.startswith(prefix):
             return "mobile/windows", 2
     
+    return "mobile/desconhecido", 3
+
+
 def classificar_por_porta(open_ports):
-    """
-    Classifica dispositivo baseado nas portas abertas
-    """
+    """Classifica dispositivo baseado nas portas abertas"""
     if not open_ports:
         return None
     
-    # Mapeamento de portas para tipo provável
     portas_para_tipo = {
-        554: "camera_ip",      # RTSP
-        8008: "camera_ip",     # Câmera IP
+        554: "camera_ip",
+        8008: "camera_ip",
         8000: "camera_ip",
-        9100: "impressora",    # JetDirect
-        515: "impressora",     # LPD
-        1883: "iot_mqtt",      # MQTT
+        9100: "impressora",
+        515: "impressora",
+        1883: "iot_mqtt",
         8883: "iot_mqtt",
-        1900: "smart_device",  # UPnP
-        5353: "smart_device",  # mDNS
-        8200: "smart_tv",      # UPnP Media
-        8009: "chromecast",    # Google Cast
-        7000: "tv",            # UPnP TV
-        5000: "nas",           # Synology/QNAP
-        8088: "router",        # Router admin
-        5001: "nas_https",     # NAS HTTPS
-        32400: "plex",         # Plex Media
-        5050: "iot_hub",       # IoT Hub
+        1900: "smart_device",
+        5353: "smart_device",
+        8200: "smart_tv",
+        8009: "chromecast",
+        7000: "tv",
+        5000: "nas",
+        8088: "router",
+        5001: "nas_https",
+        32400: "plex",
     }
     
     for port, tipo in portas_para_tipo.items():
         if port in open_ports:
             return tipo
     
-    # Combinações de portas
     if 22 in open_ports and 80 in open_ports:
         return "linux_server"
     if 3389 in open_ports:
         return "windows_server"
+    if 445 in open_ports:
+        return "windows_computer"
     
     return None
 
-    # Fallback
-    return "mobile/desconhecido", 3
-def classificar_dispositivo_randomizado(mac, hostname=""):
-    """
-    Classifica dispositivos com MAC randomizado baseado em padrões
-    """
-    mac_prefix = mac[:8].upper() if mac else ""
-    hostname = (hostname or "").lower()
-    
-    # Padrões de MAC randomizado por fabricante/família
-    android_prefixes = ['46:', '4E:', '5E:', '6A:', '2A:', '3A:', '7A:', '8A:', '9A:', 'AE:', 'BE:', 'CE:', 'DE:', 'EE:', 'FE:']
-    ios_prefixes = ['2A:', '4A:', '6A:', '8A:', '9A:', 'BA:', 'CA:', 'DA:', 'EA:', 'FA:']
-    windows_prefixes = ['1E:', '3E:', '5E:', '7E:', '9E:', 'BE:', 'DE:', 'FE:']
-    
-    # Por hostname
-    if 'android' in hostname or 'xiaomi' in hostname or 'samsung' in hostname:
-        return "mobile/android", 2
-    if 'iphone' in hostname or 'ipad' in hostname or 'apple' in hostname:
-        return "mobile/ios", 2
-    if 'windows' in hostname or 'win' in hostname:
-        return "mobile/windows", 2
-    
-    # Por MAC
-    for prefix in android_prefixes:
-        if mac_prefix.startswith(prefix):
-            return "mobile/android", 2
-    for prefix in ios_prefixes:
-        if mac_prefix.startswith(prefix):
-            return "mobile/ios", 2
-    for prefix in windows_prefixes:
-        if mac_prefix.startswith(prefix):
-            return "mobile/windows", 2
-    
-    return "mobile/desconhecido", 3
 
 def nivel_identificacao(dispositivo):
     """Classifica nível de identificação do dispositivo"""
-    # Conhecido: fabricante identificado
     if dispositivo.get('fabricante') not in ['desconhecido', 'Unknown', 'local']:
         return {"nivel": 3, "texto": "Conhecido", "cor": "🟢"}
-    
-    # Parcial: serviço/porta identificada
     if dispositivo.get('open_ports'):
         return {"nivel": 2, "texto": "Parcialmente identificado", "cor": "🟡"}
-    
-    # Desconhecido
     return {"nivel": 1, "texto": "Desconhecido", "cor": "🔴"}
