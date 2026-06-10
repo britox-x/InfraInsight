@@ -155,10 +155,18 @@ def classificar_dispositivo(hostname="", vendor="", ip="", mac="", open_ports=No
     if mac.startswith('60:92:c8'):
         return "roku", 2
 
+    # =========================
+    # Dispositivo com TTL 64 e sem portas (modo economia)
+    # =========================
+    if mac.startswith('72:fb:ad'):
+        return "mobile/android", 2
+
     
     # =========================
     # Fallback
     # =========================
+    if mac.startswith("72:fb:ad"):
+        return "mobile/android", 2
     return "desconhecido", 5
 
 

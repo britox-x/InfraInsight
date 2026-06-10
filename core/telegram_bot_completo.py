@@ -2,11 +2,15 @@
 import requests
 import json
 import os
+import sys
 import time
 import threading
 import subprocess
 import sqlite3
 from datetime import datetime
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from core.wifi_scanner import scan_wifi_completo, listar_interfaces_wifi
 
 CONFIG_PATH = "config.json"

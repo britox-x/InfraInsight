@@ -962,23 +962,23 @@
     },
     "c4:6e:1f:f3:a9:ef": {
         "tipo": "roteador",
-        "ultima_vista": "2026-05-27T16:29:43.781189",
-        "frequencia": 30
+        "ultima_vista": "2026-06-09T23:21:09.104328",
+        "frequencia": 32
     },
     "5c:0f:fb:17:e0:d2": {
         "tipo": "smarttv",
-        "ultima_vista": "2026-06-09T17:31:33.682225",
-        "frequencia": 48
+        "ultima_vista": "2026-06-09T23:38:52.766134",
+        "frequencia": 51
     },
     "c8:fe:0f:24:b5:7d": {
         "tipo": "camera_ip",
-        "ultima_vista": "2026-06-09T17:31:33.682225",
-        "frequencia": 46
+        "ultima_vista": "2026-06-09T23:38:52.766134",
+        "frequencia": 49
     },
     "60:92:c8:ea:e6:7a": {
         "tipo": "roku",
-        "ultima_vista": "2026-06-09T17:31:33.682225",
-        "frequencia": 40
+        "ultima_vista": "2026-06-09T23:38:52.766134",
+        "frequencia": 43
     },
     "82:3b:86:72:0f:d8": {
         "tipo": "desconhecido",
@@ -987,23 +987,23 @@
     },
     "78:3e:a1:90:50:80": {
         "tipo": "roteador",
-        "ultima_vista": "2026-06-09T17:31:33.682225",
-        "frequencia": 49
+        "ultima_vista": "2026-06-09T23:38:52.766134",
+        "frequencia": 52
     },
     "24:4b:03:10:5d:98": {
         "tipo": "smarttv",
-        "ultima_vista": "2026-06-09T17:31:33.682225",
-        "frequencia": 37
+        "ultima_vista": "2026-06-09T23:38:52.766134",
+        "frequencia": 40
     },
     "92:dd:a1:07:a7:e3": {
         "tipo": "mobile/android",
-        "ultima_vista": "2026-06-09T17:31:33.682225",
-        "frequencia": 25
+        "ultima_vista": "2026-06-09T18:00:15.364137",
+        "frequencia": 26
     },
     "72:fb:ad:bd:65:96": {
         "tipo": "desconhecido",
-        "ultima_vista": "2026-05-27T16:29:43.781189",
-        "frequencia": 12
+        "ultima_vista": "2026-06-09T23:21:09.104328",
+        "frequencia": 13
     },
     "66:ac:d4:04:17:9b": {
         "tipo": "desconhecido",
@@ -1012,8 +1012,8 @@
     },
     "2a:fa:67:88:b4:9e": {
         "tipo": "mobile/android",
-        "ultima_vista": "2026-06-09T17:31:33.682225",
-        "frequencia": 21
+        "ultima_vista": "2026-06-09T23:38:52.766134",
+        "frequencia": 24
     },
     "32:8f:08:70:4e:eb": {
         "tipo": "desconhecido",
@@ -1442,7 +1442,7 @@
     },
     "56:6e:b6:e9:bf:15": {
         "tipo": "mobile/android",
-        "ultima_vista": "2026-06-09T17:31:33.682225",
-        "frequencia": 13
+        "ultima_vista": "2026-06-09T23:38:52.766134",
+        "frequencia": 16
     }
 }
