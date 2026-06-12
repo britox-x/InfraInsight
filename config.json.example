@@ -1,9 +1,7 @@
 {
   "ambiente": "Casa",
   "gateway_ip": "",
-  "telegram_alerts": false,
-  "telegram_token": "SEU_TOKEN_AQUI",
-  "telegram_chat_id": "SEU_CHAT_ID_AQUI",
-  "known_host_keywords": [],
-  "trusted_vendors": []
+  "telegram_alerts": true,
+  "telegram_token": "COLE_SEU_TOKEN_AQUI",
+  "telegram_chat_id": "COLE_SEU_CHAT_ID_AQUI"
 }

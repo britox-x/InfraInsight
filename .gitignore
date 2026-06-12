@@ -39,3 +39,5 @@ exports/*.csv
 config.json
 config.json
 .env
+config.json
+.env
