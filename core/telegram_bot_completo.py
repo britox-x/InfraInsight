@@ -7,6 +7,7 @@ import time
 import threading
 import subprocess
 import sqlite3
+import re
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -136,11 +137,101 @@ Olá! Vou te ajudar a cuidar da sua rede de forma simples.
 📡 *Wi-Fi*
 /wifi - Ver redes próximas
 
+🆕 *Novos comandos*
+/ping - Ver se o bot está vivo
+/uptime - Tempo de atividade do sistema
+/ip - Ver IPs do servidor
+/info - Informações do sistema
+
 ❓ *Ajuda*
 /help - Mostrar esta ajuda
 /start - Mensagem inicial
         """
         enviar_mensagem(chat_id, msg)
+    
+    # NOVOS COMANDOS
+    elif texto == '/ping':
+        enviar_mensagem(chat_id, "🏓 *Pong!* Bot está vivo e respondendo!")
+    
+    elif texto == '/uptime':
+        try:
+            result = subprocess.run(['uptime'], capture_output=True, text=True)
+            uptime_text = result.stdout.strip()
+            # Extrair apenas o tempo
+            match = re.search(r'up\s+(.*?),\s+\d+ users', uptime_text)
+            if match:
+                uptime_text = match.group(1)
+            # Também pegar a carga
+            load_match = re.search(r'load average:\s+(.*?)$', result.stdout.strip())
+            load_text = load_match.group(1) if load_match else ""
+            
+            msg = f"⏱️ *Tempo de atividade:*\n```\n{uptime_text}\n```"
+            if load_text:
+                msg += f"\n📊 *Carga do sistema:*\n```\n{load_text}\n```"
+            enviar_mensagem(chat_id, msg)
+        except Exception as e:
+            enviar_mensagem(chat_id, f"❌ Erro ao obter uptime: {str(e)}")
+    
+    elif texto == '/ip':
+        try:
+            result = subprocess.run(['hostname', '-I'], capture_output=True, text=True)
+            ips = result.stdout.strip().split()
+            
+            # Também pegar IP da interface principal
+            result2 = subprocess.run(['ip', 'route', 'get', '1'], capture_output=True, text=True)
+            main_ip = ""
+            match = re.search(r'src\s+([\d.]+)', result2.stdout)
+            if match:
+                main_ip = match.group(1)
+            
+            if ips:
+                msg = "🌐 *IPs do servidor:*\n"
+                for ip in ips:
+                    if ip == main_ip:
+                        msg += f"• `{ip}` ⭐ *(principal)*\n"
+                    else:
+                        msg += f"• `{ip}`\n"
+                
+                # Adicionar informações de rede
+                result3 = subprocess.run(['ip', 'route', '|', 'grep', 'default'], 
+                                       shell=True, capture_output=True, text=True)
+                gateway = ""
+                match = re.search(r'via\s+([\d.]+)', result3.stdout)
+                if match:
+                    gateway = match.group(1)
+                    msg += f"\n🚪 *Gateway:* `{gateway}`"
+                
+                enviar_mensagem(chat_id, msg)
+            else:
+                enviar_mensagem(chat_id, "❌ Nenhum IP encontrado.")
+        except Exception as e:
+            enviar_mensagem(chat_id, f"❌ Erro ao obter IPs: {str(e)}")
+    
+    elif texto == '/info':
+        try:
+            import platform
+            msg = "💻 *Informações do Sistema*\n\n"
+            msg += f"🐧 *Sistema:* {platform.system()} {platform.release()}\n"
+            msg += f"🖥️ *Arquitetura:* {platform.machine()}\n"
+            msg += f"🐍 *Python:* {platform.python_version()}\n"
+            
+            # Espaço em disco
+            disk = subprocess.run(['df', '-h', '/'], capture_output=True, text=True)
+            disk_lines = disk.stdout.strip().split('\n')
+            if len(disk_lines) > 1:
+                disk_info = disk_lines[1].split()
+                msg += f"💾 *Disco:* {disk_info[3]} livre de {disk_info[1]}\n"
+            
+            # Memória
+            mem = subprocess.run(['free', '-h'], capture_output=True, text=True)
+            mem_lines = mem.stdout.strip().split('\n')
+            if len(mem_lines) > 1:
+                mem_info = mem_lines[1].split()
+                msg += f"🧠 *Memória:* {mem_info[2]} usado de {mem_info[1]}"
+            
+            enviar_mensagem(chat_id, msg)
+        except Exception as e:
+            enviar_mensagem(chat_id, f"❌ Erro: {str(e)}")
     
     elif texto == '/status':
         scan = obter_ultimo_scan()
@@ -232,6 +323,7 @@ def iniciar_bot():
     print("="*50)
     print("Bot Telegram INFRAINSIGHT ativo!")
     print("Comandos: /status, /scan, /report, /dashboard, /wifi, /help")
+    print("Novos: /ping, /uptime, /ip, /info")
     print("="*50)
     last_id = 0
     while True:

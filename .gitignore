@@ -1,44 +1,113 @@
-# Python
-__pycache__/
-*.py[cod]
-*.so
+# Virtual Environment
 venv/
 env/
+ENV/
+.venv
+
+# Configurações sensíveis
+.env
+.env.*
+*.env
+config.json
+.token
+*.token
+credentials.json
+secrets.json
 
 # Banco de dados
+*.db
+*.sqlite
+*.sqlite3
 storage/*.db
-storage/*.db-journal
-*.db.backup
+storage/*.sqlite
+!storage/.gitkeep
 
 # Logs
-logs/
 *.log
+logs/
+storage/logs/
+*.log.*
 
-# Relatórios gerados
+# Cache Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+*.egg-info/
+.installed.cfg
+*.manifest
+*.spec
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Dados
+dados.csv
+dados.json
+*.csv
+*.json
+!config.example.json
+!*.example.json
+storage/*.json
+!storage/.gitkeep
+
+# Relatórios e exports
 reports/*.pdf
-reports/graficos/*.png
+reports/*.csv
+reports/*.html
+exports/*.csv
+exports/*.json
 
 # Backups
-backups/
 *.bak
+*.backup
+*.old
+backup_*.tar.gz
+*.tar.gz
+*.zip
 
-# IDE
+# IDE e editores
 .vscode/
 .idea/
 *.swp
-
-# OS
+*.swo
+*~
 .DS_Store
 Thumbs.db
+.desktop
 
-# Config local (se tiver senhas)
-config.local.json
-config.json
-config.json
-exports/*.csv
-config.json
-config.json
-.env
-config.json
-.env
-.env
+# Sistema
+*.pid
+*.pid.lock
+*.socket
+*.sock
+
+# Arquivos do projeto
+scanner.log
+bot.log
+nohup.out
+
+# Docker
+*.pid
+*.seed
+*.pid.lock
+
+# Testes
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
