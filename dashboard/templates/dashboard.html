@@ -55,7 +55,7 @@
     <div class="table-card">
         <h3>📱 Dispositivos na Rede</h3>
         <table><thead><tr><th>IP</th><th>Host</th><th>Tipo</th><th>Fabricante</th><th>Risco</th><th>Severidade</th></tr></thead>
-        <tbody>{% for d in devices %}<tr><td>{{ d.ip }}</td><td>{{ d.nome or 'Sem hostname anunciado' }}</td><td>{{ d.tipo }}</td><td>{{ d.fabricante[:20] }}</td><td class="risk-{{ 'low' if d.risk_score <= 2 else 'medium' if d.risk_score <= 5 else 'high' }}">{{ d.risk_score }}/10</td><td><span class="badge badge-{{ d.severity|lower }}">{{ d.severity }}</span></td></tr>{% endfor %}</tbody>
+        <tbody>{% for d in devices %}<tr><td>{{ d.ip }}</td><td>{{ d.nome or 'Sem hostname anunciado' }}</td><td>{{ 'Host Conhecido' if d.tipo == 'computador_conhecido' else d.tipo }}</td><td>{{ d.fabricante[:20] }}</td><td class="risk-{{ 'low' if d.risk_score <= 2 else 'medium' if d.risk_score <= 5 else 'high' }}">{{ d.risk_score }}/10</td><td><span class="badge badge-{{ d.severity|lower }}">{{ d.severity }}</span></td></tr>{% endfor %}</tbody>
         </table>
     </div>
 </div>

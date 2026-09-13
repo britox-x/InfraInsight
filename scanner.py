@@ -67,6 +67,38 @@ def obter_wifi_real():
     except:
         return 'Cabeada/Ethernet'
 
+def obter_hostname(ip):
+    """Tenta resolver o nome por DNS reverso, NetBIOS e mDNS."""
+    try:
+        return socket.gethostbyaddr(ip)[0]
+    except (socket.herror, socket.gaierror, OSError):
+        pass
+
+    try:
+        resultado = subprocess.run(
+            ['nbtscan', '-q', ip], capture_output=True, text=True,
+            timeout=3, check=False
+        )
+        for linha in resultado.stdout.splitlines():
+            partes = linha.split()
+            if len(partes) >= 2 and partes[0] == ip:
+                return partes[1]
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        pass
+
+    try:
+        resultado = subprocess.run(
+            ['avahi-resolve', '-a', ip], capture_output=True, text=True,
+            timeout=3, check=False
+        )
+        partes = resultado.stdout.strip().split()
+        if len(partes) >= 2 and partes[0] == ip:
+            return partes[1].rstrip('.')
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        pass
+
+    return ''
+
 def scan_hosts(rede):
     """Escaneia hosts usando nmap"""
     dispositivos = []
@@ -81,12 +113,7 @@ def scan_hosts(rede):
             if nm[host].state() == 'up':
                 mac = nm[host]['addresses'].get('mac', '')
                 vendor = nm[host].get('vendor', {}).get(mac, '')
-                hostname = nm[host].hostname() or ''
-                if not hostname:
-                    try:
-                        hostname = socket.gethostbyaddr(host)[0]
-                    except (socket.herror, socket.gaierror, OSError):
-                        hostname = ''
+                hostname = nm[host].hostname() or obter_hostname(host)
                 
                 tipo = 'computador_conhecido'
                 if 'router' in hostname.lower() or 'gateway' in hostname.lower():

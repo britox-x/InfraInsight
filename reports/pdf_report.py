@@ -276,11 +276,14 @@ def _tabela_dispositivos(dispositivos, estilos):
 
     for d in dispositivos:
         risco = d.get('risco', 3)
+        hostname = d.get('hostname', '-') or '-'
+        hostname = hostname.removesuffix('.local').replace('_', ' ')
+        fabricante = d.get('fabricante') or d.get('vendor') or 'Desconhecido'
         dados.append([
             d.get('ip', '-'),
-            (d.get('hostname', '-') or '-')[:22],
+            hostname[:22],
             (d.get('mac', '-') or '-'),
-            (d.get('vendor', 'Desconhecido') or 'Desconhecido')[:18],
+            fabricante[:18],
             d.get('tipo', 'desconhecido').replace('_', ' ').title()[:18],
             str(risco),
         ])

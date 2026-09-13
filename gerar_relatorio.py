@@ -64,9 +64,9 @@ def extract_scan_data(scan_id=None):
         dispositivo = {
             'ip': dev.get('ip', ''),
             'mac': dev.get('mac', ''),
-            'hostname': dev.get('nome', ''),
-            'fabricante': dev.get('fabricante', ''),
-            'tipo': dev.get('tipo', 'desconhecido'),
+            'hostname': dev.get('hostname') or dev.get('nome', ''),
+            'fabricante': dev.get('fabricante') or dev.get('vendor', ''),
+            'tipo': 'Host Conhecido' if dev.get('tipo') == 'computador_conhecido' else dev.get('tipo', 'desconhecido'),
             'risco': risco,
             'portas': portas,
             'severity': dev.get('severity', 'Baixo')
