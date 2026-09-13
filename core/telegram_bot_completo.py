@@ -11,6 +11,9 @@ import re
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SCANNER_PATH = os.path.join(BASE_DIR, 'scanner.py')
+DB_PATH = os.path.join(BASE_DIR, 'storage', 'infrainsight.db')
 
 from core.wifi_scanner import scan_wifi_completo, listar_interfaces_wifi
 
@@ -50,7 +53,7 @@ def enviar_pdf(chat_id, caminho_pdf):
         return False
 
 def encontrar_ultimo_pdf():
-    reports_dir = "reports"
+    reports_dir = os.path.join(BASE_DIR, 'reports')
     if not os.path.exists(reports_dir):
         return None
     pdfs = [f for f in os.listdir(reports_dir) if f.endswith('.pdf')]
@@ -61,10 +64,9 @@ def encontrar_ultimo_pdf():
 
 def obter_ultimo_scan():
     try:
-        db_path = "storage/infrainsight.db"
-        if not os.path.exists(db_path):
+        if not os.path.exists(DB_PATH):
             return None
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT timestamp, ips_ativos, risco_medio FROM scans ORDER BY id DESC LIMIT 1")
         result = cursor.fetchone()
@@ -88,10 +90,14 @@ def obter_dashboard_url():
 def executar_scan():
     try:
         resultado = subprocess.run(
-            ['/home/matheus/InfraInsight/venv/bin/python', '/home/matheus/InfraInsight/scanner.py'],
-            capture_output=True, text=True, timeout=180, cwd='/home/matheus/InfraInsight'
+            [sys.executable, SCANNER_PATH],
+            capture_output=True, text=True, timeout=180, cwd=BASE_DIR
         )
         print(f"[BOT] Scan return code: {resultado.returncode}")
+        if resultado.stdout:
+            print(f"[BOT] Scan output:\n{resultado.stdout}")
+        if resultado.returncode != 0 and resultado.stderr:
+            print(f"[BOT] Scan error:\n{resultado.stderr}")
         return resultado.returncode == 0
     except subprocess.TimeoutExpired:
         print("[BOT] Scan timeout")
@@ -286,7 +292,12 @@ Olá! Vou te ajudar a cuidar da sua rede de forma simples.
     
     elif texto == '/report':
         enviar_mensagem(chat_id, "📄 *Buscando relatório...*")
-        pdf = encontrar_ultimo_pdf()
+        try:
+            from gerar_relatorio import gerar_relatorio
+            pdf = gerar_relatorio()
+        except Exception as e:
+            print(f"[BOT] Erro ao gerar relatório: {e}")
+            pdf = encontrar_ultimo_pdf()
         if pdf:
             enviar_pdf(chat_id, pdf)
         else:

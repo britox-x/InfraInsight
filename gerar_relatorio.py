@@ -8,11 +8,13 @@ import json
 from datetime import datetime
 
 sys.path.insert(0, '.')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, 'storage', 'infrainsight.db')
 
 def extract_scan_data(scan_id=None):
     """Extrai dados de scan do campo data_json"""
     
-    conn = sqlite3.connect('storage/infrainsight.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
     if scan_id:
@@ -113,7 +115,7 @@ def gerar_relatorio(scan_id=None, nome_arquivo=None):
     
     if not nome_arquivo:
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        nome_arquivo = f'reports/relatorio_{timestamp}.pdf'
+        nome_arquivo = os.path.join(BASE_DIR, 'reports', f'relatorio_{timestamp}.pdf')
     
     os.makedirs(os.path.dirname(nome_arquivo) or '.', exist_ok=True)
     
