@@ -47,6 +47,7 @@
         .badge-baixo{background:#10b98120;color:#10b981}
         .badge-médio{background:#f59e0b20;color:#f59e0b}
         .badge-alto{background:#ef444420;color:#ef4444}
+        .cpe{overflow-wrap:anywhere;font-size:12px}
         @media (max-width:768px){.charts-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:repeat(2,1fr)}}
     </style>
 </head>
@@ -63,7 +64,7 @@
             <a href="/logout" class="nav-link logout">🚪 Sair</a>
         </div>
     </div>
-    <div class="banner"><h2>ANTENA INFRAINSIGHT</h2><p>VISIBILIDADE INTELIGENTE PARA SUA REDE</p><small>Observabilidade · Análise · Gestão de Redes</small></div>
+    <div class="banner"><h2>ANTENA INFRAINSIGHT</h2><p>InfraInsight: Descoberta, Inventário e Análise de Segurança para Redes de Pequeno Porte</p></div>
     <div class="stats-grid">
         <div class="stat-card"><h3>Total de Scans</h3><div class="value">{{ total_scans }}</div></div>
         <div class="stat-card"><h3>Dispositivos Ativos</h3><div class="value">{{ latest_scan.ips_ativos }}</div></div>
@@ -80,6 +81,28 @@
         <h3>📱 Dispositivos na Rede</h3>
         <table><thead><tr><th>IP</th><th>Host</th><th>Tipo</th><th>Fabricante</th><th>Risco</th><th>Severidade</th></tr></thead>
         <tbody>{% for d in devices %}<tr><td>{{ d.ip }}</td><td>{{ d.nome or 'Sem hostname anunciado' }}</td><td>{{ 'Host Conhecido' if d.tipo == 'computador_conhecido' else d.tipo }}</td><td>{{ d.fabricante[:25] }}</td><td class="risk-{{ 'low' if d.risk_score <= 2 else 'medium' if d.risk_score <= 5 else 'high' }}">{{ d.risk_score }}/10</td><td><span class="badge badge-{{ d.severity|lower }}">{{ d.severity }}</span></td></tr>{% endfor %}</tbody>
+        </table>
+    </div>
+    <div class="table-card" style="margin-top:25px">
+        <h3>🧩 Software e serviços identificados</h3>
+        <p style="margin:8px 0 16px;color:#666">A identidade principal é o ativo; IP e porta são endpoints observados.</p>
+        <table>
+            <thead><tr><th>Produto</th><th>Versão</th><th>Ativo</th><th>Endpoint</th><th>CPE</th><th>CVEs</th><th>Status CVE</th></tr></thead>
+            <tbody>
+            {% for software in software_inventory %}
+                <tr>
+                    <td>{{ software.product }}</td>
+                    <td>{{ software.version or 'não identificada' }}</td>
+                    <td>{{ software.hostname or software.mac_address or 'ativo sem hostname' }}</td>
+                    <td>{{ software.ip_address }}:{{ software.port }}/{{ software.protocol }}</td>
+                    <td class="cpe">{{ software.cpe or 'não mapeado' }}</td>
+                    <td>{{ software.cve_ids or '—' }}</td>
+                    <td title="{{ software.cve_status_reason or '' }}">{{ software.cve_status or 'não consultado' }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="7">Nenhum software identificado. Para habilitar a detecção de versões, configure <code>INFRA_SCAN_SERVICES=true</code>.</td></tr>
+            {% endfor %}
+            </tbody>
         </table>
     </div>
 </div>

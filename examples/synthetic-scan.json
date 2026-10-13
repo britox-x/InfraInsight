@@ -1,0 +1,26 @@
+{
+  "fixture_type": "synthetic",
+  "note": "Illustrative only; this is not a scan of a real network.",
+  "timestamp": "2026-01-01T00:00:00Z",
+  "dispositivos": [
+    {
+      "ip": "192.0.2.10",
+      "mac": "02:00:00:00:00:10",
+      "hostname": "web-sample.invalid",
+      "tipo": "servidor_web",
+      "open_ports": [443],
+      "services": [
+        {
+          "port": 443,
+          "protocol": "tcp",
+          "service": "https",
+          "product": "nginx",
+          "version": "1.24.0",
+          "cpe": "cpe:2.3:a:nginx:nginx:1.24.0:*:*:*:*:*:*:*",
+          "confidence": 100,
+          "evidence": "Synthetic Nmap service evidence."
+        }
+      ]
+    }
+  ]
+}

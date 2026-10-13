@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI
 
 on:
   push:
@@ -11,13 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.12]
+        python-version: ["3.12"]
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     
@@ -32,10 +32,14 @@ jobs:
         pip install -r requirements.txt
         pip install pytest pytest-cov flake8 black
     
+    - name: Check formatting of changed Python components
+      run: |
+        black --check --line-length 79 core/cve_client.py core/infra_score.py core/scan_config.py core/fingerprint/nmap_parser.py tests/unit/test_infrascore.py tests/unit/test_software_inventory.py
+
     - name: Lint with flake8
       run: |
-        flake8 core/ dashboard/ --count --select=E9,F63,F7,F82 --show-source --statistics || true
-    
+        flake8 core/ dashboard/ scanner.py tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+
     - name: Test with pytest
       run: |
-        pytest tests/ -v --cov=core --cov=dashboard --cov-report=xml || true
+        pytest tests/unit -q

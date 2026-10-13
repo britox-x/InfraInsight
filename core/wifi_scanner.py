@@ -28,8 +28,12 @@ def scan_wifi_simples():
     
 # CERTIFIQUE-SE QUE ESTÁ ASSIM (sem TABs, apenas espaços)
     try:
-        result = subprocess.run(['iwlist', interface, 'scan'],
-                                capture_output=True, text=True, timeout=timeout)
+        result = subprocess.run(
+            ['iwlist', interface, 'scan'],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
 
         
         if result.returncode != 0:

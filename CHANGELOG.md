@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- **BREAKING:** InfraScore now uses `min(10, ((R + S) / 7) * 10)`. The base
+  exposure component `R` has a maximum of 7, and the CVE component `S` has a
+  maximum of 3. Scores calculated by earlier releases using direct sums of
+  port weights may differ even when no CVEs are present; historical scores
+  should not be compared without accounting for this formula change.
+
 ## [1.0.0] - 2026-08-31
 
 ### Added

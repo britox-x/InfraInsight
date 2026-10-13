@@ -5,6 +5,13 @@ services:
     container_name: infrainsight
     restart: unless-stopped
     network_mode: host
+    environment:
+      INFRA_SCAN_SERVICES: ${INFRA_SCAN_SERVICES:-false}
+      INFRA_SCAN_PORTS: ${INFRA_SCAN_PORTS:-}
+      INFRA_CVE_LOOKUP: ${INFRA_CVE_LOOKUP:-false}
+      INFRA_CVE_CACHE_TTL_HOURS: ${INFRA_CVE_CACHE_TTL_HOURS:-48}
+      INFRA_CVE_MIN_CONFIDENCE: ${INFRA_CVE_MIN_CONFIDENCE:-70}
+      INFRA_NVD_API_KEY: ${INFRA_NVD_API_KEY:-}
     volumes:
       - ./storage:/app/storage
       - ./reports:/app/reports
