@@ -35,9 +35,16 @@
 |------------------|--------|
 | Nmap (produto, versão e CPE) | Implementado |
 | Correlação CVE via NVD, cache SQLite e limiar de confiança | Implementado |
+| Classificador conservador v2 e evidências por dispositivo | Implementado; avaliação empírica pendente |
+| Consulta complementar SNMPv2c somente leitura | Implementado; avaliação empírica pendente |
+| Histórico de presença e eventos de entrada/saída | Implementado; avaliação empírica pendente |
 | p0f (SO passivo) | Roadmap |
 | WhatWeb (stack web) | Roadmap |
 | JA3/JA3S (fingerprint TLS) | Roadmap |
+
+“Implementado” descreve a disponibilidade do recurso no código e nos testes
+automatizados; não significa validação empírica em uma amostra representativa
+de redes ou dispositivos.
 
 ## 📋 Sobre o Projeto
 
@@ -70,6 +77,7 @@ Fornecer uma solução acessível e fácil de usar para:
 | `/start` | Mensagem de boas-vindas interativa |
 | `/scan` | Escanear a rede em tempo real |
 | `/status` | Verificar status e saúde da rede |
+| `/eventos` | Consultar entradas e saídas recentes da rede |
 | `/report` | Baixar relatório completo em PDF |
 | `/ping` | Verificar se o bot está online |
 | `/uptime` | Tempo de atividade do sistema |
@@ -79,12 +87,28 @@ Fornecer uma solução acessível e fácil de usar para:
 | `/wifi` | Escanear redes Wi-Fi próximas |
 | `/help` | Ajuda completa com todos os comandos |
 
+Configure o token do bot em `INFRA_TELEGRAM_TOKEN` no arquivo local `.env`.
+Não armazene tokens no `config.json`, em exemplos versionados ou em relatórios;
+o arquivo `.env` é ignorado pelo Git.
+
 ### 📊 Dashboard Web
 - 📈 **Gráficos interativos** de evolução do InfraScore
 - 🖥️ **Inventário detalhado** com todos os dispositivos
+- 🧾 **Evidências observadas** de hostname, fabricante e portas, separadas da identificação SNMP
+- 🕒 **Histórico de presença** com entradas e saídas confirmadas em scans completos
 - 🔔 **Alertas** de portas perigosas
 - 📱 **Interface responsiva** com tema escuro
 - 🔐 **Autenticação** de usuários
+
+O usuário `admin` com senha `admin123` é criado somente quando
+`INFRA_ENV=dev`. Em outros ambientes, defina `INFRA_ENV=production` e gerencie
+as contas fora desse usuário de teste. Configure também `INFRA_SECRET_KEY` com
+um valor aleatório estável para manter as sessões entre reinícios; a chave deve
+ser mantida em segredo e fora do controle de versão. Contas existentes com hash
+SHA-256 são atualizadas para o formato seguro do Werkzeug após um login válido.
+Mudar um ambiente que já foi executado em desenvolvimento para produção não
+remove automaticamente a conta de teste já criada; altere ou remova essa conta
+antes de expor o dashboard.
 
 ### 📄 Relatórios
 - 📑 **PDF profissional** com capa, tabelas e gráficos
@@ -110,11 +134,13 @@ Fornecer uma solução acessível e fácil de usar para:
 ### 📊 InfraScore - Métrica de Exposição
 
 O score final é limitado a 10 e segue `min(10, ((R + S) / 7) * 10)`. `R` combina
-os fatores de exposição Telnet, RTSP, hosts desconhecidos, HTTP no gateway e
+os fatores de exposição Telnet, RTSP, hosts desconhecidos, HTTP sem HTTPS no gateway e
 portas administrativas (pesos 2, 2, 1, 1 e 1; máximo 7). `S` adiciona risco CVE
 por instância de software (crítica=3, alta=2, média=1), limitado a 3. A correlação
 é uma indicação de exposição, não prova de explorabilidade nem substitui validação
-do fornecedor.
+do fornecedor. U pode crescer no modo rápido quando faltam evidências suficientes
+para classificar os hosts; ele não deve ser interpretado isoladamente como risco
+confirmado.
 
 ## 🖥️ Arquitetura
 
@@ -177,6 +203,28 @@ CPEs inferidos só são consultados com confiança mínima 70
 esse limiar. Sem essas opções, a descoberta já existente continua igual.
 O dashboard lista software por ativo e endpoint e inclui CVEs conhecidas no
 InfraScore quando há resultados salvos.
+
+### Descoberta complementar via SNMP
+
+O SNMPv2c é opcional e consulta somente os hosts já descobertos, em modo de
+leitura, para enriquecer hostname, fabricante e identificação do equipamento.
+Habilite `INFRA_SCAN_SNMP=true` e informe explicitamente em
+`INFRA_SNMP_COMMUNITY` uma comunidade somente leitura configurada nos
+equipamentos; a porta padrão é 161 (`INFRA_SNMP_PORT`). O scanner não tenta
+comunidades padrão ou credenciais em sequência e não grava a comunidade no
+banco ou nos relatórios. Como SNMPv2c não cifra a comunidade, prefira SNMPv3
+quando disponível e execute consultas somente em redes autorizadas.
+
+### Rastreabilidade e cobertura do scan
+
+Cada novo scan registra modo (rápido ou serviços), consulta ao NVD, duração,
+versões do classificador e da fórmula, além da decomposição T/Q/U/H/A/S.
+Componentes não verificados ficam fora do score parcial e são exibidos como
+“não verificado”; isso não significa risco zero. O fator U é binário: vale 1
+quando a proporção de dispositivos desconhecidos excede 30%. Scans antigos são
+identificados como legado (classificador v1), pois sua contagem de desconhecidos
+pode não ser confiável. Compare scores apenas entre scans com modo e fórmula
+compatíveis.
 
 Ativos são identificados preferencialmente pelo MAC; hostname e IP são chaves
 alternativas quando o MAC não está disponível. Endpoints conservam IP, porta e
