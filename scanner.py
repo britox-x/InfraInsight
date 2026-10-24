@@ -10,6 +10,7 @@ import csv
 import subprocess
 import re
 import socket
+import time
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -19,8 +20,19 @@ load_dotenv()
 from core.persistence import DB_NAME, init_database, salvar_scan
 from core.exporter import exportar_csv, exportar_software_csv
 from core.utils import detectar_ambiente_por_rede
+from core.classifier import (
+    classificar_dispositivo,
+    contar_dispositivos_desconhecidos,
+    mac_localmente_administrado,
+    normalizar_fabricante,
+    normalizar_hostname,
+)
 from core.fingerprint.nmap_parser import parsear_servicos_nmap
 from core.scan_config import obter_portas_scan
+from core.snmp_scanner import (
+    consultar_hosts_snmp,
+    integrar_dados_snmp,
+)
 
 init_database()
 
@@ -111,35 +123,39 @@ def scan_hosts(rede, detect_services=False):
 
     nm = nmap.PortScanner()
     print(f"🔍 Escaneando: {rede}")
-    nm.scan(hosts=rede, arguments='-sn -PR')
+    nm.scan(
+        hosts=rede,
+        arguments='-sn -n -PR -PE -PS80,443 -T4 --max-retries 1',
+    )
 
     for host in nm.all_hosts():
         if nm[host].state() == 'up':
             mac = nm[host]['addresses'].get('mac', '')
-            vendor = nm[host].get('vendor', {}).get(mac, '')
-            hostname = nm[host].hostname() or obter_hostname(host)
-
-            tipo = 'computador_conhecido'
-            if 'router' in hostname.lower() or 'gateway' in hostname.lower():
-                tipo = 'roteador'
-            elif 'iphone' in hostname.lower() or 'android' in hostname.lower():
-                tipo = 'smartphone'
-            elif 'tv' in hostname.lower():
-                tipo = 'smarttv'
-            elif 'camera' in hostname.lower():
-                tipo = 'camera_ip'
-
-            if vendor and 'apple' in vendor.lower():
-                tipo = 'smartphone'
-            elif vendor and 'tp-link' in vendor.lower():
-                tipo = 'roteador'
+            vendor_raw = nm[host].get('vendor', {}).get(mac, '')
+            hostname_raw = nm[host].hostname() or obter_hostname(host)
+            vendor = normalizar_fabricante(vendor_raw)
+            hostname = normalizar_hostname(hostname_raw)
+            tipo, confidence = classificar_dispositivo(
+                hostname=hostname,
+                vendor=vendor,
+                ip=host,
+                mac=mac,
+            )
 
             dispositivos.append({
                 'ip': host,
                 'mac': mac,
-                'fabricante': vendor or 'local',
+                'fabricante': vendor or 'Desconhecido',
                 'hostname': hostname,
                 'tipo': tipo,
+                'classificacao_confianca': confidence,
+                'classificacao_evidencia': (
+                    [f"Hostname: {hostname}"] if hostname else []
+                ) + ([f"Fabricante/OUI: {vendor}"] if vendor else [])
+                + (
+                    ["MAC localmente administrado"]
+                    if mac_localmente_administrado(mac) else []
+                ),
                 'risco': 0,
                 'severity': 'Baixo',
                 'open_ports': [],
@@ -160,11 +176,19 @@ def scan_hosts(rede, detect_services=False):
                 device['services'] = services
                 device['open_ports'] = sorted({service['port'] for service in services})
 
+    for device in dispositivos:
+        device['classificacao_evidencia'].extend(
+            f"Porta aberta: {port}" for port in device['open_ports']
+        )
+        if not device['classificacao_evidencia']:
+            device['classificacao_evidencia'] = ["Sem evidência suficiente"]
+
     return dispositivos
 
 # --- MAIN ---
 print("\n🔍 InfraInsight Scanner")
 print("=" * 40)
+scan_started = time.monotonic()
 
 # Detectar rede real
 ip_local = obter_ip_real()
@@ -188,7 +212,42 @@ print(f"\n📊 Iniciando scan no ambiente: {ambiente}")
 scan_services = os.getenv('INFRA_SCAN_SERVICES', '').strip().lower() in {
     '1', 'true', 'yes', 'on'
 }
+cve_lookup = os.getenv('INFRA_CVE_LOOKUP', '').strip().lower() in {
+    '1', 'true', 'yes', 'on'
+}
+snmp_enabled = os.getenv('INFRA_SCAN_SNMP', '').strip().lower() in {
+    '1', 'true', 'yes', 'on'
+}
+snmp_community = os.getenv('INFRA_SNMP_COMMUNITY', '').strip()
+snmp_port = 161
+if snmp_enabled:
+    if not snmp_community:
+        raise ValueError(
+            "INFRA_SCAN_SNMP está ativo, mas INFRA_SNMP_COMMUNITY não foi "
+            "definido. Configure uma comunidade somente leitura."
+        )
+    try:
+        snmp_port = int(os.getenv('INFRA_SNMP_PORT', '161'))
+    except ValueError as error:
+        raise ValueError("INFRA_SNMP_PORT deve ser um número inteiro") from error
+    if not 1 <= snmp_port <= 65535:
+        raise ValueError("INFRA_SNMP_PORT deve estar entre 1 e 65535")
+
 dispositivos = scan_hosts(rede, detect_services=scan_services)
+if snmp_enabled:
+    snmp_results = consultar_hosts_snmp(
+        [device['ip'] for device in dispositivos],
+        snmp_community,
+        port=snmp_port,
+    )
+    for device in dispositivos:
+        snmp_data = snmp_results.get(device['ip'])
+        if snmp_data:
+            integrar_dados_snmp(device, snmp_data)
+    print(
+        f"ℹ️ SNMP consultou {len(dispositivos)} host(s); "
+        f"{len(snmp_results)} responderam com dados do sistema."
+    )
 
 if dispositivos:
     print(f"\n✅ {len(dispositivos)} dispositivos encontrados:")
@@ -203,16 +262,15 @@ if dispositivos:
         'dispositivos': dispositivos,
         'ips_ativos': len(dispositivos),
         'risco_medio': 0,
-        'desconhecidos': 0,
+        'desconhecidos': contar_dispositivos_desconhecidos(dispositivos),
         'ambiente': ambiente,
         'gateway': gateway,
         'rede': rede,
+        'presence_scan_complete': True,
+        'snmp_enabled': snmp_enabled,
         'timestamp': datetime.now().isoformat()
     }
-
-    if scan_services and os.getenv('INFRA_CVE_LOOKUP', '').strip().lower() in {
-        '1', 'true', 'yes', 'on'
-    }:
+    if scan_services and cve_lookup:
         from requests.exceptions import (
             ConnectionError as RequestsConnectionError,
             HTTPError,
@@ -237,6 +295,43 @@ if dispositivos:
                 device['services'] = enriched_services[offset:offset + len(services)]
                 offset += len(services)
 
+    all_services = [
+        service
+        for device in dispositivos
+        for service in device.get('services', [])
+    ]
+    cve_services = [service for service in all_services if service.get('cpe')]
+    verified_statuses = {
+        'verified', 'verified_cached', 'verified_stale_cache'
+    }
+    cve_coverage_complete = (
+        bool(cve_services)
+        and len(cve_services) == len(all_services)
+        and all(
+            service.get('cve_status') in verified_statuses
+            for service in cve_services
+        )
+    )
+    resultado.update({
+        'modo': 'servicos' if scan_services else 'rapido',
+        'scan_services': scan_services,
+        'snmp_enabled': snmp_enabled,
+        'cve_lookup': cve_lookup and scan_services,
+        'classifier_version': (
+            'v2-conservador-snmp' if snmp_enabled else 'v2-conservador'
+        ),
+        'formula_version': 'normalizada-7-v1',
+        'cve_coverage_complete': cve_coverage_complete,
+        'duracao_s': round(time.monotonic() - scan_started, 2),
+    })
+    from core.infra_score import decompor_infra_score
+
+    resultado['componentes'] = decompor_infra_score(
+        resultado,
+        scan_services=scan_services,
+        cve_lookup=cve_lookup and scan_services,
+        cve_coverage_complete=cve_coverage_complete,
+    )['components']
     scan_id = salvar_scan(resultado)
     print(f"\n💾 Scan salvo com ID: {scan_id}")
     
@@ -256,5 +351,19 @@ if dispositivos:
             print(f"⚠️ Erro ao exportar inventário de software: {error}")
 else:
     print("\n⚠️ Nenhum dispositivo encontrado (verifique o firewall)")
+    scan_id = salvar_scan({
+        'dispositivos': [],
+        'ips_ativos': 0,
+        'ambiente': ambiente,
+        'gateway': gateway,
+        'rede': rede,
+        'presence_scan_complete': True,
+        'modo': 'servicos' if scan_services else 'rapido',
+        'scan_services': scan_services,
+        'snmp_enabled': snmp_enabled,
+        'timestamp': datetime.now().isoformat(),
+        'duracao_s': round(time.monotonic() - scan_started, 2),
+    })
+    print(f"💾 Scan vazio salvo com ID: {scan_id}")
 
 print("\n✅ Scanner finalizado!")
