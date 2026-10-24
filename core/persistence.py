@@ -6,6 +6,8 @@ from datetime import datetime
 import os
 import uuid
 
+from core.classifier import mac_localmente_administrado
+
 DB_NAME = os.getenv("INFRA_DB_PATH", "storage/infrainsight.db")
 
 def iniciar_banco():
@@ -77,6 +79,23 @@ def iniciar_banco():
         )
         """)
 
+    cursor.execute("PRAGMA table_info(scans)")
+    scan_columns = {column[1] for column in cursor.fetchall()}
+    for column, definition in (
+        ("modo", "TEXT NOT NULL DEFAULT 'rapido'"),
+        ("scan_services", "INTEGER NOT NULL DEFAULT 0"),
+        ("snmp_enabled", "INTEGER NOT NULL DEFAULT 0"),
+        ("cve_lookup", "INTEGER NOT NULL DEFAULT 0"),
+        ("classifier_version", "TEXT NOT NULL DEFAULT 'v1'"),
+        ("formula_version", "TEXT NOT NULL DEFAULT 'normalizada-7-v1'"),
+        ("duracao_s", "REAL"),
+        ("componentes_json", "TEXT"),
+    ):
+        if column not in scan_columns:
+            cursor.execute(
+                f"ALTER TABLE scans ADD COLUMN {column} {definition}"
+            )
+
     # Tabela de dispositivos (verificar e atualizar)
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='dispositivos'")
     table_exists = cursor.fetchone()
@@ -93,6 +112,14 @@ def iniciar_banco():
             cursor.execute("ALTER TABLE dispositivos ADD COLUMN open_ports TEXT")
         if 'risk_details' not in columns:
             cursor.execute("ALTER TABLE dispositivos ADD COLUMN risk_details TEXT")
+        if 'classificacao_evidencia' not in columns:
+            cursor.execute(
+                "ALTER TABLE dispositivos ADD COLUMN classificacao_evidencia TEXT"
+            )
+        if 'classificacao_confianca' not in columns:
+            cursor.execute(
+                "ALTER TABLE dispositivos ADD COLUMN classificacao_confianca INTEGER"
+            )
     else:
         cursor.execute("""
         CREATE TABLE dispositivos (
@@ -107,9 +134,20 @@ def iniciar_banco():
             risk_score INTEGER,
             severity TEXT,
             open_ports TEXT,
-            risk_details TEXT
+            risk_details TEXT,
+            classificacao_evidencia TEXT,
+            classificacao_confianca INTEGER
         )
         """)
+
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_dispositivos_scan_id "
+        "ON dispositivos(scan_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_dispositivos_mac "
+        "ON dispositivos(mac)"
+    )
     
     # Tabela de alertas
     cursor.execute("""
@@ -204,6 +242,38 @@ def iniciar_banco():
         fetched_at TIMESTAMP NOT NULL,
         expires_at TIMESTAMP NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS device_presence_networks (
+        network_key TEXT PRIMARY KEY,
+        initialized_at TEXT NOT NULL,
+        last_scan_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS device_presence (
+        network_key TEXT NOT NULL,
+        device_key TEXT NOT NULL,
+        mac_address TEXT,
+        ip_address TEXT,
+        device_name TEXT,
+        last_seen_at TEXT NOT NULL,
+        missed_scans INTEGER NOT NULL DEFAULT 0,
+        is_present INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY (network_key, device_key)
+    );
+    CREATE TABLE IF NOT EXISTS device_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        network_key TEXT NOT NULL,
+        device_key TEXT NOT NULL,
+        mac_address TEXT,
+        ip_address TEXT,
+        device_name TEXT,
+        event TEXT NOT NULL,
+        timestamp TEXT NOT NULL,
+        source TEXT NOT NULL,
+        mac_randomizado INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_device_events_timestamp
+        ON device_events(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_device_events_mac_timestamp
+        ON device_events(mac_address, timestamp);
     """)
 
     cursor.execute("PRAGMA table_info(software_instances)")
@@ -218,6 +288,24 @@ def iniciar_banco():
                 f"ALTER TABLE software_instances ADD COLUMN {column} {definition}"
             )
 
+    cursor.execute("PRAGMA table_info(device_events)")
+    event_columns = {column[1] for column in cursor.fetchall()}
+    if "mac_randomizado" not in event_columns:
+        cursor.execute(
+            "ALTER TABLE device_events ADD COLUMN "
+            "mac_randomizado INTEGER NOT NULL DEFAULT 0"
+        )
+        cursor.execute(
+            "SELECT id, mac_address FROM device_events WHERE mac_address IS NOT NULL"
+        )
+        cursor.executemany(
+            "UPDATE device_events SET mac_randomizado = ? WHERE id = ?",
+            [
+                (int(mac_localmente_administrado(mac)), event_id)
+                for event_id, mac in cursor.fetchall()
+            ],
+        )
+
     conn.commit()
     conn.close()
     print("[INFO] Banco de dados SQLite inicializado/atualizado")
@@ -225,6 +313,34 @@ def iniciar_banco():
 def init_database():
     """Alias para iniciar_banco"""
     iniciar_banco()
+
+
+def obter_eventos_recentes(limite=50, rede=None, *, db_path=None):
+    """Retorna eventos recentes, limitados e opcionalmente filtrados por rede."""
+    if not isinstance(limite, int) or isinstance(limite, bool):
+        raise ValueError("O limite de eventos deve ser um inteiro entre 1 e 200.")
+    if not 1 <= limite <= 200:
+        raise ValueError("O limite de eventos deve estar entre 1 e 200.")
+
+    query = """
+        SELECT event, device_name, mac_address, ip_address, timestamp,
+               network_key AS rede, source, mac_randomizado
+        FROM device_events
+    """
+    params = []
+    if rede:
+        query += " WHERE network_key = ?"
+        params.append(rede)
+    query += " ORDER BY timestamp DESC, id DESC LIMIT ?"
+    params.append(limite)
+
+    conn = sqlite3.connect(db_path or DB_NAME)
+    conn.row_factory = sqlite3.Row
+    try:
+        return [dict(row) for row in conn.execute(query, params).fetchall()]
+    finally:
+        conn.close()
+
 
 def salvar_scan(scan_data):
     """Salva scan completo no SQLite"""
@@ -238,8 +354,11 @@ def salvar_scan(scan_data):
         cursor.execute("""
             INSERT INTO scans (
                 timestamp, ambiente, ips_ativos, uso, risco_medio,
-                desconhecidos, mac_randomizados, recomendacao, data_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                desconhecidos, mac_randomizados, recomendacao, data_json,
+                modo, scan_services, snmp_enabled, cve_lookup,
+                classifier_version, formula_version, duracao_s,
+                componentes_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             scan_data.get('timestamp', datetime.now().isoformat()),
             scan_data.get('ambiente', 'Casa'),
@@ -249,22 +368,30 @@ def salvar_scan(scan_data):
             scan_data.get('desconhecidos', 0),
             scan_data.get('mac_randomizados', 0),
             scan_data.get('recomendacao', 'OK'),
-            json.dumps(scan_data, ensure_ascii=False)
+            json.dumps(scan_data, ensure_ascii=False),
+            scan_data.get('modo', 'rapido'),
+            int(bool(scan_data.get('scan_services', False))),
+            int(bool(scan_data.get('snmp_enabled', False))),
+            int(bool(scan_data.get('cve_lookup', False))),
+            scan_data.get('classifier_version', 'v1'),
+            scan_data.get('formula_version', 'normalizada-7-v1'),
+            scan_data.get('duracao_s'),
+            json.dumps(
+                scan_data.get('componentes', []), ensure_ascii=False
+            ),
         ))
         
         scan_id = cursor.lastrowid
         
-        # Atualizar inventário por ativo lógico e endpoint observado.
-        for device in scan_data.get('dispositivos', []):
-            open_ports_json = json.dumps(device.get('open_ports', []))
-            risk_details_json = json.dumps(device.get('risk_details', []))
-            
-            cursor.execute("""
-                INSERT INTO dispositivos (
-                    scan_id, ip, nome, mac, fabricante, tipo, 
-                    attention_score, risk_score, severity, open_ports, risk_details
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
+        devices = scan_data.get('dispositivos', [])
+        cursor.executemany("""
+            INSERT INTO dispositivos (
+                scan_id, ip, nome, mac, fabricante, tipo,
+                attention_score, risk_score, severity, open_ports, risk_details,
+                classificacao_evidencia, classificacao_confianca
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, [
+            (
                 scan_id,
                 device.get('ip'),
                 device.get('nome', device.get('hostname', 'desconhecido')),
@@ -274,9 +401,20 @@ def salvar_scan(scan_data):
                 device.get('risco', 0),
                 device.get('risco', 0),
                 device.get('severity', 'Baixo'),
-                open_ports_json,
-                risk_details_json
-            ))
+                json.dumps(device.get('open_ports', [])),
+                json.dumps(device.get('risk_details', [])),
+                json.dumps(
+                    device.get('classificacao_evidencia', []),
+                    ensure_ascii=False,
+                ),
+                device.get('classificacao_confianca'),
+            )
+            for device in devices
+        ])
+
+        # Persistir histórico, alertas e inventário de software na mesma transação.
+        for device in devices:
+            risk_details_json = json.dumps(device.get('risk_details', []))
             
             # Registrar histórico de risco
             cursor.execute("""
@@ -310,6 +448,8 @@ def salvar_scan(scan_data):
                 ))
 
             _salvar_servicos(cursor, device, scan_data.get('timestamp'))
+
+        _registrar_eventos_presenca(cursor, scan_data)
         
         conn.commit()
         print(f"[INFO] Scan salvo no SQLite com ID: {scan_id}")
@@ -321,6 +461,150 @@ def salvar_scan(scan_data):
         raise
     finally:
         conn.close()
+
+
+def _registrar_eventos_presenca(cursor, scan_data):
+    """Registra transições apenas para snapshots ativos explicitamente completos."""
+    if not scan_data.get("presence_scan_complete"):
+        return
+
+    network_key = str(scan_data.get("rede") or "").strip()
+    if not network_key:
+        raise ValueError("Scan completo de presença precisa identificar a rede.")
+
+    timestamp = str(scan_data.get("timestamp") or datetime.now().isoformat())
+    devices_by_key = {}
+    for device in scan_data.get("dispositivos", []):
+        mac = str(device.get("mac") or "").strip().casefold()
+        ip_address = str(device.get("ip") or "").strip()
+        if mac and mac not in {"desconhecido", "unknown", "none"}:
+            device_key = f"mac:{mac}"
+        elif ip_address:
+            device_key = f"ip:{ip_address}"
+        else:
+            continue
+        devices_by_key[device_key] = (
+            mac or None,
+            ip_address or None,
+            str(device.get("hostname") or device.get("nome") or "").strip()
+            or None,
+        )
+
+    cursor.execute(
+        "SELECT 1 FROM device_presence_networks WHERE network_key = ?",
+        (network_key,),
+    )
+    initialized = cursor.fetchone() is not None
+    if not initialized:
+        cursor.execute(
+            """
+            INSERT INTO device_presence_networks
+                (network_key, initialized_at, last_scan_at)
+            VALUES (?, ?, ?)
+            """,
+            (network_key, timestamp, timestamp),
+        )
+        cursor.executemany(
+            """
+            INSERT INTO device_presence (
+                network_key, device_key, mac_address, ip_address, device_name,
+                last_seen_at, missed_scans, is_present
+            ) VALUES (?, ?, ?, ?, ?, ?, 0, 1)
+            """,
+            [
+                (network_key, device_key, *details, timestamp)
+                for device_key, details in devices_by_key.items()
+            ],
+        )
+        return
+
+    cursor.execute(
+        """
+        SELECT device_key, mac_address, ip_address, device_name, missed_scans
+        FROM device_presence
+        WHERE network_key = ? AND is_present = 1
+        """,
+        (network_key,),
+    )
+    previously_present = {
+        row[0]: row[1:] for row in cursor.fetchall()
+    }
+
+    for device_key, (mac, ip_address, device_name) in devices_by_key.items():
+        previous = previously_present.pop(device_key, None)
+        if previous is None:
+            cursor.execute(
+                """
+                INSERT INTO device_presence (
+                    network_key, device_key, mac_address, ip_address,
+                    device_name, last_seen_at, missed_scans, is_present
+                ) VALUES (?, ?, ?, ?, ?, ?, 0, 1)
+                ON CONFLICT(network_key, device_key) DO UPDATE SET
+                    mac_address = excluded.mac_address,
+                    ip_address = excluded.ip_address,
+                    device_name = excluded.device_name,
+                    last_seen_at = excluded.last_seen_at,
+                    missed_scans = 0,
+                    is_present = 1
+                """,
+                (network_key, device_key, mac, ip_address, device_name, timestamp),
+            )
+            cursor.execute(
+                """
+                INSERT INTO device_events (
+                    network_key, device_key, mac_address, ip_address,
+                    device_name, event, timestamp, source, mac_randomizado
+                ) VALUES (?, ?, ?, ?, ?, 'ENTROU', ?, 'SCAN', ?)
+                """,
+                (
+                    network_key, device_key, mac, ip_address, device_name,
+                    timestamp, int(mac_localmente_administrado(mac)),
+                ),
+            )
+            continue
+
+        cursor.execute(
+            """
+            UPDATE device_presence
+            SET mac_address = ?, ip_address = ?, device_name = ?,
+                last_seen_at = ?, missed_scans = 0
+            WHERE network_key = ? AND device_key = ?
+            """,
+            (mac, ip_address, device_name, timestamp, network_key, device_key),
+        )
+
+    for device_key, previous in previously_present.items():
+        old_mac, old_ip, old_name, missed_scans = previous
+        missed_scans += 1
+        cursor.execute(
+            """
+            UPDATE device_presence
+            SET missed_scans = ?, is_present = ?
+            WHERE network_key = ? AND device_key = ?
+            """,
+            (missed_scans, int(missed_scans < 2), network_key, device_key),
+        )
+        if missed_scans >= 2:
+            cursor.execute(
+                """
+                INSERT INTO device_events (
+                    network_key, device_key, mac_address, ip_address,
+                    device_name, event, timestamp, source, mac_randomizado
+                ) VALUES (?, ?, ?, ?, ?, 'SAIU', ?, 'SCAN', ?)
+                """,
+                (
+                    network_key, device_key, old_mac, old_ip, old_name,
+                    timestamp, int(mac_localmente_administrado(old_mac)),
+                ),
+            )
+
+    cursor.execute(
+        """
+        UPDATE device_presence_networks
+        SET last_scan_at = ? WHERE network_key = ?
+        """,
+        (timestamp, network_key),
+    )
 
 
 def _salvar_servicos(cursor, device, observed_at=None):
