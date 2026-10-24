@@ -1,5 +1,41 @@
 # core/classifier.py
 
+_PLACEHOLDER_VENDORS = {"", "local", "unknown", "desconhecido", "n/a", "none"}
+
+
+def normalizar_hostname(hostname):
+    """Remove sufixos locais de descoberta e placeholders de hostname."""
+    normalized = str(hostname or "").strip().rstrip(".")
+    if normalized.lower().endswith(".local"):
+        normalized = normalized[:-6]
+    return normalized.strip()
+
+
+def formatar_hostname(hostname):
+    """Formata hostname para exibição consistente em dashboard e relatórios."""
+    return normalizar_hostname(hostname).replace("_", " ").strip()
+
+
+def normalizar_fabricante(vendor):
+    """Converte valores ausentes ou genéricos do scanner para string vazia."""
+    normalized = str(vendor or "").strip()
+    if normalized.casefold() in _PLACEHOLDER_VENDORS:
+        return ""
+    return normalized
+
+
+def mac_localmente_administrado(mac):
+    """Retorna se o bit U/L do primeiro octeto do MAC está definido."""
+    try:
+        first_octet_text = mac.split(":")[0]
+        if len(first_octet_text) != 2:
+            return False
+        first_octet = int(first_octet_text, 16)
+    except (AttributeError, IndexError, ValueError):
+        return False
+    return bool(first_octet & 0x02)
+
+
 def classificar_dispositivo(hostname="", vendor="", ip="", mac="", open_ports=None):
     """
     Classifica o dispositivo baseado em múltiplas informações
@@ -17,8 +53,8 @@ def classificar_dispositivo(hostname="", vendor="", ip="", mac="", open_ports=No
     if open_ports is None:
         open_ports = []
     
-    hostname = (hostname or "").lower()
-    vendor = (vendor or "").lower()
+    hostname = normalizar_hostname(hostname).lower()
+    vendor = normalizar_fabricante(vendor).lower()
     ip = ip or ""
     mac = mac or ""
 
@@ -28,7 +64,15 @@ def classificar_dispositivo(hostname="", vendor="", ip="", mac="", open_ports=No
     if mac.startswith('60:92:c8') or 8060 in open_ports:
         return "roku", 1
 
-    
+    # Sem hostname nem portas, não inferir um tipo a partir de MAC aleatório
+    # ou de um fabricante que não foi identificado.
+    if (
+        not hostname
+        and not open_ports
+        and (mac_localmente_administrado(mac) or not vendor)
+    ):
+        return "desconhecido", 5
+
     # =========================
     # Amino (set-top box / TV Box)
     # =========================
@@ -58,7 +102,7 @@ def classificar_dispositivo(hostname="", vendor="", ip="", mac="", open_ports=No
     # =========================
     # PCs (Intel, Dell, Lenovo, etc)
     # =========================
-    if any(x in vendor for x in ["intel", "dell", "lenovo", "asus", "acer", "hp", "local"]):
+    if any(x in vendor for x in ["intel", "dell", "lenovo", "asus", "acer", "hp"]):
         return "computador_conhecido", 1
     
     # =========================
@@ -168,6 +212,16 @@ def classificar_dispositivo(hostname="", vendor="", ip="", mac="", open_ports=No
     if mac.startswith("72:fb:ad"):
         return "mobile/android", 2
     return "desconhecido", 5
+
+
+def contar_dispositivos_desconhecidos(dispositivos):
+    """Conta somente dispositivos sem uma classe determinada pelo classificador."""
+    return sum(
+        1
+        for device in dispositivos
+        if str(device.get("tipo", "desconhecido")).strip().lower()
+        == "desconhecido"
+    )
 
 
 def identificar_tipo_por_mac(mac):
