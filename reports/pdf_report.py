@@ -14,6 +14,7 @@ Dependências: reportlab, matplotlib, Pillow
 import os
 import io
 from datetime import datetime
+from xml.sax.saxutils import escape
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import cm
@@ -24,6 +25,8 @@ from reportlab.platypus import (
     Image, PageBreak, HRFlowable
 )
 from reportlab.pdfgen import canvas as rl_canvas
+from core.classifier import formatar_hostname, mac_localmente_administrado
+from core.infra_score import score_minimo_observado
 
 # ── Tenta importar gerador de gráficos ──────────────────────────────────────
 try:
@@ -189,6 +192,18 @@ def _estilos():
                            fontName='Helvetica', fontSize=9,
                            textColor=TEXTO_CLARO, leading=14, spaceAfter=4)
 
+    aviso = ParagraphStyle(
+        'AvisoScore',
+        parent=corpo,
+        textColor=colors.HexColor('#713F12'),
+        backColor=colors.HexColor('#FEF3C7'),
+        borderColor=colors.HexColor('#D97706'),
+        borderWidth=0.7,
+        borderPadding=6,
+        leading=12,
+        spaceAfter=8,
+    )
+
     legenda = ParagraphStyle('Legenda',
                              fontName='Helvetica', fontSize=8,
                              textColor=TEXTO_MUTED, alignment=TA_CENTER, spaceAfter=10)
@@ -202,6 +217,7 @@ def _estilos():
         'subtitulo_capa': subtitulo_capa,
         'secao': secao,
         'corpo': corpo,
+        'aviso': aviso,
         'legenda': legenda,
         'rodape_info': rodape_info,
     }
@@ -271,24 +287,32 @@ def _tabela_dispositivos(dispositivos, estilos):
             color=AZUL_BORDA,
             spaceAfter=8))
 
-    cabecalho = ['IP', 'Hostname', 'MAC', 'Fabricante', 'Tipo', 'Risco']
+    cabecalho = ['IP', 'Hostname', 'MAC', 'Fabricante', 'Tipo']
     dados = [cabecalho]
+    fabricante_style = ParagraphStyle(
+        'FabricanteCelula',
+        fontName='Helvetica',
+        fontSize=7.5,
+        leading=9,
+        textColor=TEXTO_CLARO,
+    )
 
     for d in dispositivos:
-        risco = d.get('risco', 3)
-        hostname = d.get('hostname', '-') or '-'
-        hostname = hostname.removesuffix('.local').replace('_', ' ')
-        fabricante = d.get('fabricante') or d.get('vendor') or 'Desconhecido'
+        hostname = formatar_hostname(d.get('hostname')) or '-'
+        fabricante = (
+            'MAC local (possível randomização)'
+            if mac_localmente_administrado(d.get('mac'))
+            else d.get('fabricante') or d.get('vendor') or 'Desconhecido'
+        )
         dados.append([
             d.get('ip', '-'),
             hostname[:22],
             (d.get('mac', '-') or '-'),
-            fabricante[:18],
+            Paragraph(escape(fabricante), fabricante_style),
             d.get('tipo', 'desconhecido').replace('_', ' ').title()[:18],
-            str(risco),
         ])
 
-    col_w = [2.8 * cm, 3.5 * cm, 3.5 * cm, 3.2 * cm, 3.0 * cm, 1.2 * cm]
+    col_w = [2.8 * cm, 4.0 * cm, 3.5 * cm, 3.6 * cm, 3.2 * cm]
     t = Table(dados, colWidths=col_w, repeatRows=1)
 
     style_cmds = [
@@ -306,18 +330,6 @@ def _tabela_dispositivos(dispositivos, estilos):
         ('TOPPADDING', (0, 0), (-1, -1), 4),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
     ]
-
-    # Colorir coluna de risco por nível
-    for linha_idx, row in enumerate(dados[1:], start=1):
-        try:
-            nivel = int(row[5])
-            cor = RISCO_COR.get(nivel, TEXTO_CLARO)
-            style_cmds.append(
-                ('TEXTCOLOR', (5, linha_idx), (5, linha_idx), cor))
-            style_cmds.append(
-                ('FONTNAME', (5, linha_idx), (5, linha_idx), 'Helvetica-Bold'))
-        except (ValueError, IndexError):
-            pass
 
     t.setStyle(TableStyle(style_cmds))
     itens.append(t)
@@ -441,7 +453,7 @@ def _secao_resumo(dispositivos, estilos):
 # ════════════════════════════════════════════════════════════════════════════
 
 def gerar_pdf(dispositivos: list, historico: list = None,
-              nome_arquivo: str = None) -> str:
+              nome_arquivo: str = None, contexto_scan: dict = None) -> str:
     """
     Gera o relatório PDF completo do InfraInsight.
 
@@ -490,6 +502,8 @@ def gerar_pdf(dispositivos: list, historico: list = None,
     total = len(dispositivos)
     desconhecidos = sum(
         1 for d in dispositivos if d.get('tipo') == 'desconhecido')
+    if contexto_scan and contexto_scan.get("classifier_version") == "v1":
+        desconhecidos = "N/D (legado)"
     riscos = [
         d.get(
             'risco', 3) for d in dispositivos if isinstance(
@@ -512,6 +526,80 @@ def gerar_pdf(dispositivos: list, historico: list = None,
     historia = []
     historia += _capa(estilos, total, desconhecidos,
                       risco_medio, timestamp_leg)
+    if contexto_scan:
+        historia += [
+            Spacer(1, 0.3 * cm),
+            Paragraph(
+                "Contexto e decomposição do InfraScore", estilos["secao"]
+            ),
+        ]
+        contexto_rows = [
+            ["Scan", str(contexto_scan.get("id", "N/D"))],
+            ["Modo", contexto_scan.get("modo", "rapido")],
+            ["Duração", (
+                f'{contexto_scan["duracao_s"]}s'
+                if contexto_scan.get("duracao_s") is not None else "N/D"
+            )],
+            ["Classificador / fórmula", (
+                f'{contexto_scan.get("classifier_version", "v1")} / '
+                f'{contexto_scan.get("formula_version", "normalizada-7-v1")}'
+            )],
+        ]
+        historia.append(Table(contexto_rows, colWidths=[5 * cm, 11 * cm]))
+        componentes = contexto_scan.get("componentes") or []
+        if componentes:
+            score = contexto_scan.get("score_observado")
+            if score is None:
+                score = score_minimo_observado(componentes)
+            observed_keys = contexto_scan.get("componentes_observados")
+            if observed_keys is None:
+                observed_keys = [
+                    component.get("key")
+                    for component in componentes
+                    if component.get("status") == "observado"
+                ]
+            rows = [["Indicador", "Peso", "Status", "Valor"]]
+            rows.extend(
+                [
+                    f'{component.get("key")} · {component.get("name")}',
+                    str(component.get("weight")),
+                    str(component.get("status")),
+                    str(component.get("display_value", "—")),
+                ]
+                for component in componentes
+            )
+            tabela = Table(
+                rows, repeatRows=1, colWidths=[7 * cm, 2 * cm, 3 * cm, 4 * cm]
+            )
+            tabela.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), AZUL_PRIMARIO),
+                ("TEXTCOLOR", (0, 0), (-1, 0), BRANCO),
+                ("GRID", (0, 0), (-1, -1), 0.3, AZUL_BORDA),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]))
+            historia.extend([
+                Spacer(1, 0.2 * cm),
+                Paragraph(
+                    (
+                        "Score mínimo observado: "
+                        f'{score:.1f}'.replace(".", ",")
+                        + f'/10 (apenas {", ".join(observed_keys)})'
+                        if score is not None
+                        else "Score mínimo observado: N/D (dados observados insuficientes)."
+                    ),
+                    estilos["aviso"],
+                ),
+                Paragraph(
+                    "Componentes não verificados não são tratados como zero. "
+                    "U depende da classificação; no modo rápido, hosts sem "
+                    "evidência suficiente podem permanecer desconhecidos e "
+                    "elevar esse indicador. O score parcial não equivale a uma "
+                    "avaliação completa de risco.",
+                    estilos["aviso"],
+                ),
+                tabela,
+            ])
     historia += _tabela_dispositivos(dispositivos, estilos)
     if caminhos_graficos:
         historia += _secao_graficos(caminhos_graficos, estilos)

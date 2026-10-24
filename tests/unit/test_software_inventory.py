@@ -1,4 +1,5 @@
 import csv
+import json
 import logging
 import sqlite3
 
@@ -9,7 +10,7 @@ from core.cve_client import NvdClient, enriquecer_servicos_com_cves
 from core.exporter import exportar_software_csv
 from core.fingerprint.cpe_mapper import mapear_cpe
 from core.fingerprint.nmap_parser import parsear_servicos_nmap
-from core.infra_score import calcular_infra_score
+from core.infra_score import calcular_infra_score, decompor_infra_score
 import core.persistence as persistence
 
 
@@ -398,6 +399,327 @@ def test_infra_score_regression_and_maximum():
         )
         == 10.0
     )
+
+
+def test_score_parcial_so_inclui_componentes_observados():
+    resultado = decompor_infra_score(
+        {
+            "ips_ativos": 5,
+            "desconhecidos": 4,
+            "dispositivos": [{"ip": "192.0.2.10", "open_ports": []}],
+        },
+        scan_services=False,
+        cve_lookup=False,
+        cve_coverage_complete=False,
+    )
+
+    assert resultado["score"] == pytest.approx(10 / 7)
+    assert resultado["components"][0]["status"] == "não verificado"
+    assert resultado["components"][2]["display_value"] == "4/5 (80%); fator 1"
+    assert resultado["components"][2]["contribution"] == 1
+    assert resultado["complete"] is False
+
+
+def test_componente_cve_nao_multiplica_duas_vezes_o_peso():
+    resultado = decompor_infra_score(
+        {
+            "ips_ativos": 1,
+            "desconhecidos": 0,
+            "dispositivos": [{
+                "ip": "192.0.2.10",
+                "open_ports": [],
+                "services": [{
+                    "port": 443,
+                    "protocol": "tcp",
+                    "cves": [{
+                        "cve_id": "CVE-2024-12345",
+                        "severity": "CRITICAL",
+                    }],
+                }],
+            }],
+        },
+        scan_services=True,
+        cve_lookup=True,
+        cve_coverage_complete=True,
+    )
+
+    score_component = resultado["components"][-1]
+    assert score_component["value"] == 3
+    assert score_component["contribution"] == 3
+
+
+def test_scan_salva_metadados_e_migracao_e_idempotente(monkeypatch, tmp_path):
+    db_path = tmp_path / "scan.db"
+    monkeypatch.setattr(persistence, "DB_NAME", str(db_path))
+    persistence.iniciar_banco()
+    scan_id = persistence.salvar_scan({
+        "timestamp": "2026-01-01T12:00:00",
+        "ips_ativos": 1,
+        "desconhecidos": 1,
+        "modo": "servicos",
+        "scan_services": True,
+        "snmp_enabled": True,
+        "cve_lookup": True,
+        "classifier_version": "v2-conservador",
+        "formula_version": "normalizada-7-v1",
+        "duracao_s": 12.5,
+        "componentes": [{"key": "T", "status": "observado"}],
+        "dispositivos": [{
+            "ip": "192.0.2.10",
+            "tipo": "desconhecido",
+            "snmp_info": {"description": "Cisco Router"},
+            "classificacao_evidencia": ["Porta aberta: 23"],
+            "classificacao_confianca": 5,
+        }],
+    })
+    persistence.iniciar_banco()
+
+    with sqlite3.connect(db_path) as conn:
+        scan = conn.execute(
+            "SELECT modo, scan_services, snmp_enabled, cve_lookup, classifier_version, "
+            "formula_version, duracao_s, componentes_json, data_json "
+            "FROM scans WHERE id = ?",
+            (scan_id,),
+        ).fetchone()
+        device = conn.execute(
+            "SELECT classificacao_evidencia, classificacao_confianca "
+            "FROM dispositivos WHERE scan_id = ?",
+            (scan_id,),
+        ).fetchone()
+
+    assert scan[:7] == (
+        "servicos", 1, 1, 1, "v2-conservador", "normalizada-7-v1", 12.5
+    )
+    assert json.loads(scan[7]) == [{"key": "T", "status": "observado"}]
+    assert json.loads(scan[8])["dispositivos"][0]["snmp_info"] == {
+        "description": "Cisco Router"
+    }
+    assert json.loads(device[0]) == ["Porta aberta: 23"]
+    assert device[1] == 5
+
+
+def test_salvar_scan_persiste_dispositivos_em_lote(monkeypatch, tmp_path):
+    db_path = tmp_path / "batch.db"
+    monkeypatch.setattr(persistence, "DB_NAME", str(db_path))
+    devices = [
+        {
+            "ip": f"192.0.2.{index}",
+            "mac": f"00:11:22:33:44:{index:02x}",
+            "hostname": f"host-{index}",
+            "tipo": "computador_windows",
+            "open_ports": [22],
+            "classificacao_evidencia": ["Porta aberta: 22"],
+        }
+        for index in range(1, 4)
+    ]
+
+    scan_id = persistence.salvar_scan({"dispositivos": devices})
+
+    with sqlite3.connect(db_path) as conn:
+        saved_devices = conn.execute(
+            "SELECT ip, mac, nome FROM dispositivos "
+            "WHERE scan_id = ? ORDER BY ip",
+            (scan_id,),
+        ).fetchall()
+        saved_risk_rows = conn.execute(
+            "SELECT COUNT(*) FROM risk_history WHERE scan_id = ?",
+            (scan_id,),
+        ).fetchone()[0]
+
+    assert saved_devices == [
+        ("192.0.2.1", "00:11:22:33:44:01", "host-1"),
+        ("192.0.2.2", "00:11:22:33:44:02", "host-2"),
+        ("192.0.2.3", "00:11:22:33:44:03", "host-3"),
+    ]
+    assert saved_risk_rows == len(devices)
+
+
+def test_salvar_scan_reverte_todos_os_registros_em_erro(
+    monkeypatch, tmp_path
+):
+    db_path = tmp_path / "rollback.db"
+    monkeypatch.setattr(persistence, "DB_NAME", str(db_path))
+    persistence.init_database()
+
+    def fail_saving_services(*args, **kwargs):
+        raise RuntimeError("falha simulada")
+
+    monkeypatch.setattr(persistence, "_salvar_servicos", fail_saving_services)
+    with pytest.raises(RuntimeError, match="falha simulada"):
+        persistence.salvar_scan({
+            "dispositivos": [{
+                "ip": "192.0.2.10",
+                "mac": "00:11:22:33:44:55",
+            }],
+        })
+
+    with sqlite3.connect(db_path) as conn:
+        counts = tuple(
+            conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            for table in ("scans", "dispositivos", "risk_history")
+        )
+
+    assert counts == (0, 0, 0)
+
+
+def test_migracao_preserva_scans_legados_com_defaults_conservadores(
+    monkeypatch, tmp_path
+):
+    db_path = tmp_path / "legacy.db"
+    with sqlite3.connect(db_path) as conn:
+        conn.execute("""
+            CREATE TABLE scans (
+                id INTEGER PRIMARY KEY,
+                timestamp TEXT,
+                ambiente TEXT,
+                ips_ativos INTEGER,
+                uso REAL,
+                risco_medio REAL,
+                desconhecidos INTEGER,
+                mac_randomizados INTEGER,
+                recomendacao TEXT,
+                data_json TEXT
+            )
+        """)
+        conn.execute(
+            "INSERT INTO scans (id, timestamp, ips_ativos, desconhecidos) "
+            "VALUES (37, '2025-01-01T12:00:00', 5, 0)"
+        )
+    monkeypatch.setattr(persistence, "DB_NAME", str(db_path))
+
+    persistence.iniciar_banco()
+    persistence.iniciar_banco()
+
+    with sqlite3.connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT id, ips_ativos, desconhecidos, modo, scan_services, "
+            "snmp_enabled, cve_lookup, classifier_version, formula_version, "
+            "duracao_s "
+            "FROM scans WHERE id = 37"
+        ).fetchone()
+    assert row == (
+        37, 5, 0, "rapido", 0, 0, 0, "v1", "normalizada-7-v1", None
+    )
+
+
+def test_pdf_inclui_contexto_e_decomposicao(monkeypatch, tmp_path):
+    from reports import pdf_report
+
+    monkeypatch.setattr(pdf_report, "GRAFICOS_OK", False)
+    monkeypatch.setattr(pdf_report, "PASTA_REPORTS", str(tmp_path))
+    output = tmp_path / "scan.pdf"
+    generated = pdf_report.gerar_pdf(
+        dispositivos=[{
+            "ip": "192.0.2.10",
+            "tipo": "desconhecido",
+            "risco": 1,
+        }],
+        nome_arquivo=str(output),
+        contexto_scan={
+            "id": 7,
+            "modo": "Rápido (ARP)",
+            "duracao_s": 4.5,
+            "classifier_version": "v2-conservador",
+            "formula_version": "normalizada-7-v1",
+            "componentes": [{
+                "key": "U",
+                "name": "Dispositivos desconhecidos",
+                "weight": 1,
+                "status": "observado",
+                "value": 1,
+                "contribution": 1,
+                "display_value": "1/1 (100%); fator 1",
+            }],
+        },
+    )
+
+    assert generated == str(output)
+    assert output.is_file()
+    assert output.stat().st_size > 0
+
+
+def test_pdf_inventario_omite_risco_e_sinaliza_mac_local():
+    from reportlab.platypus import Table
+    from reports import pdf_report
+
+    items = pdf_report._tabela_dispositivos(
+        [{
+            "ip": "192.0.2.13",
+            "hostname": "_gateway.local",
+            "mac": "02:11:22:33:44:55",
+            "fabricante": "Desconhecido",
+            "tipo": "gateway",
+            "risco": 0,
+        }],
+        pdf_report._estilos(),
+    )
+    table = next(item for item in items if isinstance(item, Table))
+
+    assert table._cellvalues[0] == [
+        "IP", "Hostname", "MAC", "Fabricante", "Tipo"
+    ]
+    assert table._cellvalues[1][1] == "gateway"
+    assert table._cellvalues[1][2] == "02:11:22:33:44:55"
+    assert (
+        table._cellvalues[1][3].getPlainText()
+        == "MAC local (possível randomização)"
+    )
+    assert len(table._cellvalues[1]) == 5
+
+
+def test_pdf_le_componentes_canonicos_e_preserva_mac_ausente(
+    monkeypatch, tmp_path
+):
+    from gerar_relatorio import extract_scan_data
+
+    db_path = tmp_path / "report.db"
+    monkeypatch.setattr("gerar_relatorio.DB_PATH", str(db_path))
+    scan_data = {
+        "ips_ativos": 1,
+        "desconhecidos": 1,
+        "classifier_version": "v2-conservador",
+        "dispositivos": [{
+            "ip": "192.0.2.13",
+            "tipo": "desconhecido",
+            "mac": "",
+        }],
+        "componentes": [{
+            "key": "U",
+            "status": "não verificado",
+            "weight": 1,
+            "display_value": "—",
+        }],
+    }
+    canonical_components = [{
+        "key": "U",
+        "status": "observado",
+        "weight": 1,
+        "value": 1,
+        "contribution": 1,
+        "display_value": "1/1 (100%); fator 1",
+    }]
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            "CREATE TABLE scans (id INTEGER PRIMARY KEY, timestamp TEXT, "
+            "data_json TEXT, componentes_json TEXT)"
+        )
+        conn.execute(
+            "INSERT INTO scans VALUES (?, ?, ?, ?)",
+            (
+                39,
+                "2026-10-24T01:00:00",
+                json.dumps(scan_data),
+                json.dumps(canonical_components),
+            ),
+        )
+
+    devices, _, context = extract_scan_data(39)
+
+    assert devices[0]["ip"] == "192.0.2.13"
+    assert devices[0]["mac"] == ""
+    assert context["componentes"] == canonical_components
+    assert context["score_observado"] == pytest.approx(10 / 7)
+    assert context["componentes_observados"] == ["U"]
 
 
 def test_scan_port_configuration_has_100_valid_defaults():

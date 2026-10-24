@@ -84,7 +84,8 @@ def _derive_base_factors(scan_data: Mapping[str, Any]) -> dict[str, bool]:
         many_unknown = False
     gateway_ip = scan_data.get("gateway")
     gateway_http = any(
-        ports & {80, 443}
+        80 in ports
+        and 443 not in ports
         and (
             (gateway_ip and device.get("ip") == gateway_ip)
             or str(device.get("tipo", "")).lower()
@@ -99,6 +100,135 @@ def _derive_base_factors(scan_data: Mapping[str, Any]) -> dict[str, bool]:
         "gateway_http": gateway_http,
         "admin_ports": any(ports & ADMIN_PORTS for _, ports in port_sets),
     }
+
+
+def decompor_infra_score(
+    scan_data: Mapping[str, Any],
+    *,
+    scan_services: bool,
+    cve_lookup: bool,
+    cve_coverage_complete: bool,
+    classification_observed: bool = True,
+) -> dict[str, Any]:
+    """Retorna os componentes observáveis e o limite inferior do InfraScore."""
+    factors = _derive_base_factors(scan_data)
+    total = scan_data.get("ips_ativos", 0)
+    unknown = scan_data.get("desconhecidos", 0)
+    try:
+        unknown_ratio = unknown / total if total else 0.0
+    except (TypeError, ZeroDivisionError):
+        unknown_ratio = 0.0
+
+    software_score = pontuar_vulnerabilidades(scan_data)
+    values: dict[str, tuple[str, int, Any, str, bool]] = {
+        "T": (
+            "Telnet exposto",
+            2,
+            factors["telnet"],
+            "Sim" if factors["telnet"] else "Não",
+            scan_services,
+        ),
+        "Q": (
+            "RTSP exposto",
+            2,
+            factors["rtsp"],
+            "Sim" if factors["rtsp"] else "Não",
+            scan_services,
+        ),
+        "U": (
+            "Dispositivos desconhecidos (>30%)",
+            1,
+            factors["unknown"],
+            f"{unknown}/{total} ({unknown_ratio:.0%}); fator "
+            f"{int(factors['unknown'])}",
+            classification_observed,
+        ),
+        "H": (
+            "HTTP sem HTTPS no gateway",
+            1,
+            factors["gateway_http"],
+            "Sim" if factors["gateway_http"] else "Não",
+            scan_services,
+        ),
+        "A": (
+            "Porta administrativa exposta",
+            1,
+            factors["admin_ports"],
+            "Sim" if factors["admin_ports"] else "Não",
+            scan_services,
+        ),
+        "S": (
+            "CVEs conhecidas",
+            "até 3",
+            software_score,
+            str(software_score),
+            scan_services and cve_lookup and cve_coverage_complete,
+        ),
+    }
+    components = []
+    weighted_observed = 0.0
+    observed_count = 0
+    for key, (name, weight, value, display_value, observed) in values.items():
+        contribution = (
+            value if key == "S" and observed
+            else weight * value if observed
+            else None
+        )
+        if observed:
+            weighted_observed += contribution
+            observed_count += 1
+        components.append(
+            {
+                "key": key,
+                "name": name,
+                "weight": weight,
+                "status": "observado" if observed else "não verificado",
+                "value": value if observed else None,
+                "display_value": display_value if observed else "—",
+                "contribution": contribution,
+            }
+        )
+
+    return {
+        "score": min(10.0, weighted_observed * 10.0 / 7.0)
+        if observed_count
+        else None,
+        "components": components,
+        "complete": observed_count == len(values),
+    }
+
+
+def score_minimo_observado(components: list[Mapping[str, Any]]) -> float | None:
+    """Calcula o score apenas quando todos os componentes observados têm valor."""
+    observed = [
+        component
+        for component in components
+        if component.get("status") == "observado"
+    ]
+    if not observed:
+        return None
+
+    weighted_score = 0.0
+    for component in observed:
+        contribution = component.get("contribution")
+        if contribution is None:
+            value = component.get("value")
+            if value is None:
+                return None
+            try:
+                contribution = (
+                    float(value)
+                    if component.get("key") == "S"
+                    else float(component["weight"]) * float(value)
+                )
+            except (KeyError, TypeError, ValueError):
+                return None
+        try:
+            weighted_score += float(contribution)
+        except (TypeError, ValueError):
+            return None
+
+    return min(10.0, weighted_score * 10.0 / 7.0)
 
 
 def calcular_infra_score(

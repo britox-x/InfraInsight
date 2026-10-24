@@ -43,11 +43,31 @@
         .risk-low{color:#10b981;font-weight:600}
         .risk-medium{color:#f59e0b;font-weight:600}
         .risk-high{color:#ef4444;font-weight:600}
+        .risk-unknown{color:#6b7280;font-weight:600}
         .badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600}
         .badge-baixo{background:#10b98120;color:#10b981}
         .badge-médio{background:#f59e0b20;color:#f59e0b}
         .badge-alto{background:#ef444420;color:#ef4444}
+        .badge-cve{background:#ef444420;color:#ef4444}
+        .badge-clear{background:#10b98120;color:#10b981}
+        .badge-neutral{background:#6b728020;color:#6b7280}
         .cpe{overflow-wrap:anywhere;font-size:12px}
+        .cve-list{overflow-wrap:anywhere}
+        .scan-context,.score-details{background:white;border-radius:16px;padding:20px;margin-bottom:25px;box-shadow:0 5px 15px rgba(0,0,0,0.1)}
+        .scan-context p,.score-details p{margin-top:8px;color:#555}
+        .score-details summary{font-weight:700;cursor:pointer}
+        .not-verified{color:#6b7280;background:#f3f4f6}
+        .evidence{font-size:12px;color:#555}
+        .presence-card{margin-bottom:25px}
+        .event-list{list-style:none;margin-top:15px}
+        .event-item{display:grid;grid-template-columns:145px 90px minmax(150px,1fr) auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #eee}
+        .event-time,.event-source{color:#6b7280;font-size:13px}
+        .event-enter{color:#059669;font-weight:700}
+        .event-exit{color:#dc2626;font-weight:700}
+        .event-device{overflow-wrap:anywhere}
+        .event-randomized{display:inline-block;margin-left:6px;padding:3px 7px;border-radius:12px;background:#f59e0b20;color:#92400e;font-size:11px;font-weight:600}
+        .event-address{color:#6b7280;font-family:monospace;font-size:13px}
+        @media (max-width:768px){.event-item{grid-template-columns:1fr auto;gap:6px}.event-time{grid-column:1/-1}.event-address{grid-column:1/-1}}
         @media (max-width:768px){.charts-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:repeat(2,1fr)}}
     </style>
 </head>
@@ -65,42 +85,134 @@
         </div>
     </div>
     <div class="banner"><h2>ANTENA INFRAINSIGHT</h2><p>InfraInsight: Descoberta, Inventário e Análise de Segurança para Redes de Pequeno Porte</p></div>
+    <div class="scan-context">
+        <strong>Scan #{{ latest_scan.id }}</strong> · {{ latest_scan.timestamp[:19] }} ·
+        Modo: <strong>{{ 'Serviços' if latest_scan.scan_services else 'Descoberta rápida (ARP)' }}{% if latest_scan.cve_lookup %} + NVD{% endif %}{% if latest_scan.snmp_enabled %} + SNMP{% endif %}</strong>
+        {% if latest_scan.duracao_s is not none %} · Duração: {{ '%.1f'|format(latest_scan.duracao_s) }}s{% endif %}
+        · Classificador {{ latest_scan.classifier_version }} · Fórmula {{ latest_scan.formula_version }}
+        <p>Varreduras de modos ou fórmulas diferentes não devem ser comparadas diretamente.</p>
+    </div>
     <div class="stats-grid">
         <div class="stat-card"><h3>Total de Scans</h3><div class="value">{{ total_scans }}</div></div>
         <div class="stat-card"><h3>Dispositivos Ativos</h3><div class="value">{{ latest_scan.ips_ativos }}</div></div>
-        <div class="stat-card"><h3>Desconhecidos</h3><div class="value">{{ latest_scan.desconhecidos }}</div></div>
-        <div class="stat-card infra-card"><h3>🏆 INFRA SCORE</h3><div class="score">{{ infra_score.score }}/10</div><div class="status {{ infra_score.cor }}">{{ infra_score.status }}</div>
+        <div class="stat-card"><h3>Desconhecidos</h3><div class="value">{% if latest_scan.id and latest_scan.classifier_version != 'v1' %}{{ latest_scan.desconhecidos }} / {{ latest_scan.ips_ativos }}{% else %}N/D{% endif %}</div></div>
+        <div class="stat-card"><h3>Possíveis novos dispositivos</h3><div class="value">{% if has_previous_scan %}{{ new_devices|length }}{% else %}N/D{% endif %}</div><p>MACs não vistos no scan imediatamente anterior.</p></div>
+        <div class="stat-card infra-card"><h3>🏆 INFRA SCORE OBSERVADO (MÍNIMO)</h3><div class="score">{% if infra_score.score is not none %}{{ ('%.1f'|format(infra_score.score))|replace('.', ',') }}/10{% else %}N/D{% endif %}</div><div class="status {{ infra_score.cor }}">{{ infra_score.status }}</div>
         {% if infra_score.motivos %}<div style="margin-top:15px;font-size:12px"><strong>Motivos:</strong><ul>{% for m in infra_score.motivos %}<li>{{ m }}</li>{% endfor %}</ul></div>{% endif %}
         </div>
+    </div>
+    <div class="table-card" style="margin-bottom:25px">
+        <h3>🔎 Possíveis novos dispositivos</h3>
+        {% if not has_previous_scan %}
+            <p>Não há scan anterior para comparação.</p>
+        {% elif new_devices %}
+            <p>Estes MACs não foram observados no scan imediatamente anterior. MACs randomizados podem aparecer como novos.</p>
+            <ul>
+                {% for device in new_devices %}
+                    <li>{{ device.ip }} · {{ device.nome or 'Sem hostname anunciado' }} · {{ device.mac }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Nenhum MAC novo em relação ao scan imediatamente anterior.</p>
+        {% endif %}
+    </div>
+    <div class="table-card presence-card">
+        <h3>🕒 Movimentação recente</h3>
+        <p>Horários locais do host do scanner. Saídas são confirmadas após dois scans completos sem o dispositivo.</p>
+        {% if eventos %}
+            <ul class="event-list">
+                {% for event in eventos %}
+                    <li class="event-item">
+                        <span class="event-time">{{ event.timestamp[:16]|replace('T', ' ') }}</span>
+                        <span class="{{ 'event-enter' if event.event == 'ENTROU' else 'event-exit' }}">
+                            {{ '🟢 Entrou' if event.event == 'ENTROU' else '🔴 Saiu' }}
+                        </span>
+                        <strong class="event-device">
+                            {{ event.device_name or event.mac_address or 'Dispositivo sem identificação' }}
+                            {% if event.mac_randomizado %}<span class="event-randomized">🎲 MAC local · possível randomização</span>{% endif %}
+                        </strong>
+                        <span class="event-address">{{ event.ip_address or 'IP desconhecido' }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Nenhuma movimentação registrada ainda.</p>
+        {% endif %}
+    </div>
+    <div class="score-details">
+        <details open>
+            <summary>🔎 Detalhes do InfraScore</summary>
+            <p>O score é um limite inferior calculado apenas com componentes observados nesta varredura. “Não verificado” não significa ausência de risco. Fórmula: min(10, soma ponderada × 10/7). No modo rápido, U depende da classificação; hosts sem evidência suficiente podem permanecer desconhecidos e elevar o indicador.</p>
+            <table>
+                <thead><tr><th>Indicador</th><th>Peso</th><th>Status</th><th>Valor</th></tr></thead>
+                <tbody>
+                {% for component in infra_score.componentes %}
+                    <tr class="{{ 'not-verified' if component.status != 'observado' }}">
+                        <td>{{ component.key }} · {{ component.name }}</td>
+                        <td>{{ component.weight }}</td>
+                        <td>{{ component.status }}</td>
+                        <td>{{ component.display_value }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <p>H representa HTTP exposto no gateway sem HTTPS detectado. É uma regra heurística de portas observadas, não uma validação de configuração TLS.</p>
+        </details>
     </div>
     <div class="charts-grid">
         <div class="chart-card"><h3>📈 Evolução do Risco</h3><canvas id="riskChart"></canvas></div>
         <div class="chart-card"><h3>🥧 Distribuição por Tipo</h3><canvas id="typeChart"></canvas></div>
     </div>
     <div class="table-card">
-        <h3>📱 Dispositivos na Rede</h3>
-        <table><thead><tr><th>IP</th><th>Host</th><th>Tipo</th><th>Fabricante</th><th>Risco</th><th>Severidade</th></tr></thead>
-        <tbody>{% for d in devices %}<tr><td>{{ d.ip }}</td><td>{{ d.nome or 'Sem hostname anunciado' }}</td><td>{{ 'Host Conhecido' if d.tipo == 'computador_conhecido' else d.tipo }}</td><td>{{ d.fabricante[:25] }}</td><td class="risk-{{ 'low' if d.risk_score <= 2 else 'medium' if d.risk_score <= 5 else 'high' }}">{{ d.risk_score }}/10</td><td><span class="badge badge-{{ d.severity|lower }}">{{ d.severity }}</span></td></tr>{% endfor %}</tbody>
-        </table>
-    </div>
-    <div class="table-card" style="margin-top:25px">
-        <h3>🧩 Software e serviços identificados</h3>
-        <p style="margin:8px 0 16px;color:#666">A identidade principal é o ativo; IP e porta são endpoints observados.</p>
+        <h3>📡 Dispositivos na Rede</h3>
         <table>
-            <thead><tr><th>Produto</th><th>Versão</th><th>Ativo</th><th>Endpoint</th><th>CPE</th><th>CVEs</th><th>Status CVE</th></tr></thead>
+            <thead><tr><th>IP</th><th>Host</th><th>Tipo</th><th>Fabricante</th><th>Evidências observadas</th><th>Identificação SNMP</th><th>Software / Versão</th><th>CVEs</th></tr></thead>
             <tbody>
-            {% for software in software_inventory %}
+            {% for d in devices %}
                 <tr>
-                    <td>{{ software.product }}</td>
-                    <td>{{ software.version or 'não identificada' }}</td>
-                    <td>{{ software.hostname or software.mac_address or 'ativo sem hostname' }}</td>
-                    <td>{{ software.ip_address }}:{{ software.port }}/{{ software.protocol }}</td>
-                    <td class="cpe">{{ software.cpe or 'não mapeado' }}</td>
-                    <td>{{ software.cve_ids or '—' }}</td>
-                    <td title="{{ software.cve_status_reason or '' }}">{{ software.cve_status or 'não consultado' }}</td>
+                    <td>{{ d.ip }}</td>
+                    <td>{{ d.nome_display or 'Sem hostname anunciado' }}</td>
+                    <td>{{ 'Computador reconhecido' if d.tipo == 'computador_conhecido' else d.tipo|replace('_', ' ') }}</td>
+                    <td title="{{ d.mac or '' }}">{{ d.fabricante_display }}</td>
+                    <td class="evidence">{{ d.classificacao_evidencia|join('; ') }}</td>
+                    <td class="evidence">
+                        {% if d.snmp_info %}
+                            {{ d.snmp_info.description or d.snmp_info.object_id or 'Resposta SNMP sem descrição' }}
+                            {% if d.snmp_info.location %}<br>Local: {{ d.snmp_info.location }}{% endif %}
+                        {% elif latest_scan.snmp_enabled %}
+                            <span class="badge badge-neutral">Sem resposta/dados</span>
+                        {% else %}
+                            <span class="badge badge-neutral">Não consultado</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if not scan_services_enabled %}
+                            <span class="badge badge-neutral">Não verificado neste scan</span>
+                        {% else %}
+                        {% for software in d.software %}
+                            {{ software.product }}{% if software.version %} {{ software.version }}{% endif %}{% if not loop.last %}<br>{% endif %}
+                        {% else %}
+                            <span class="badge badge-neutral">Não identificado</span>
+                        {% endfor %}
+                        {% endif %}
+                    </td>
+                    <td class="cve-list">
+                        {% if d.cve_ids %}
+                            <span class="badge badge-cve">{{ d.cve_ids|length }} CVE(s)</span><br>
+                            {{ d.cve_ids|join(', ') }}
+                        {% elif not scan_services_enabled or not cve_lookup_enabled %}
+                            <span class="badge badge-neutral">Não verificado</span>
+                        {% elif d.software and d.cve_consultada %}
+                            <span class="badge badge-clear">Nenhuma CVE encontrada</span>
+                        {% elif d.software %}
+                            <span class="badge badge-neutral">Consulta incompleta</span>
+                        {% else %}
+                            <span class="badge badge-neutral">Nenhum software identificado</span>
+                        {% endif %}
+                    </td>
                 </tr>
             {% else %}
-                <tr><td colspan="7">Nenhum software identificado. Para habilitar a detecção de versões, configure <code>INFRA_SCAN_SERVICES=true</code>.</td></tr>
+                <tr><td colspan="8">Nenhum dispositivo encontrado no scan mais recente.</td></tr>
             {% endfor %}
             </tbody>
         </table>
@@ -110,9 +222,16 @@
     const evolucao = {{ evolucao|tojson }};
     if (evolucao && evolucao.length) {
         const rev = [...evolucao].reverse();
+        const fast = rev.map(e => e.modo === 'servicos' ? null : e.risco_medio);
+        const services = rev.map(e => e.modo === 'servicos' ? e.risco_medio : null);
         new Chart(document.getElementById('riskChart'), {
             type: 'line',
-            data: { labels: rev.map(e => e.timestamp.slice(5,16)), datasets: [{ label: 'Risco Médio', data: rev.map(e => e.risco_medio), borderColor: '#667eea', fill: true }, { label: 'Dispositivos', data: rev.map(e => e.ips_ativos), borderColor: '#764ba2', fill: true }] }
+            data: { labels: rev.map(e => e.timestamp.slice(5,16)), datasets: [
+                { label: 'Risco médio · rápido', data: fast, borderColor: '#667eea', spanGaps: false },
+                { label: 'Risco médio · serviços', data: services, borderColor: '#f59e0b', spanGaps: false },
+                { label: 'Dispositivos', data: rev.map(e => e.ips_ativos), borderColor: '#764ba2', yAxisID: 'y1' }
+            ] },
+            options: { scales: { y: { beginAtZero: true }, y1: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false } } } }
         });
     }
     const tipos = {{ tipos_count|tojson }};

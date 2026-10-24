@@ -6,6 +6,7 @@ import os
 import sqlite3
 import json
 from datetime import datetime
+from core.infra_score import decompor_infra_score, score_minimo_observado
 
 sys.path.insert(0, '.')
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -18,9 +19,16 @@ def extract_scan_data(scan_id=None):
     cursor = conn.cursor()
     
     if scan_id:
-        cursor.execute('SELECT id, timestamp, data_json FROM scans WHERE id = ?', (scan_id,))
+        cursor.execute(
+            'SELECT id, timestamp, data_json, componentes_json FROM scans '
+            'WHERE id = ?',
+            (scan_id,),
+        )
     else:
-        cursor.execute('SELECT id, timestamp, data_json FROM scans ORDER BY id DESC LIMIT 1')
+        cursor.execute(
+            'SELECT id, timestamp, data_json, componentes_json FROM scans '
+            'ORDER BY id DESC LIMIT 1'
+        )
     
     row = cursor.fetchone()
     if not row:
@@ -36,7 +44,50 @@ def extract_scan_data(scan_id=None):
         data = json.loads(data_json) if data_json else {}
     except:
         data = {}
-    
+
+    classifier_version = data.get('classifier_version', 'v1')
+    try:
+        componentes = json.loads(row[3]) if row[3] else []
+    except (TypeError, ValueError):
+        componentes = []
+    if not componentes:
+        componentes = data.get('componentes', [])
+    if not componentes:
+        componentes = decompor_infra_score(
+            data,
+            scan_services=bool(data.get('scan_services', False)),
+            cve_lookup=bool(data.get('cve_lookup', False)),
+            cve_coverage_complete=bool(
+                data.get('cve_coverage_complete', False)
+            ),
+            classification_observed=classifier_version != 'v1',
+        )['components']
+    componentes_observados = [
+        component.get('key')
+        for component in componentes
+        if component.get('status') == 'observado'
+    ]
+
+    contexto_scan = {
+        'id': scan_id,
+        'modo': (
+            'Serviços' if data.get('scan_services') else 'Rápido (ARP)'
+        ) + (
+            ' + NVD' if data.get('cve_lookup') else ''
+        ) + (
+            ' + SNMP' if data.get('snmp_enabled') else ''
+        ),
+        'scan_services': data.get('scan_services', False),
+        'cve_lookup': data.get('cve_lookup', False),
+        'duracao_s': data.get('duracao_s'),
+        'classifier_version': classifier_version,
+        'formula_version': data.get(
+            'formula_version', 'normalizada-7-v1'
+        ),
+        'componentes': componentes,
+        'score_observado': score_minimo_observado(componentes),
+        'componentes_observados': componentes_observados,
+    }
     print(f'📊 Scan ID: {scan_id}')
     print(f'  Data: {timestamp}')
     print(f'  Ambiente: {data.get("ambiente", "N/A")}')
@@ -97,14 +148,14 @@ def extract_scan_data(scan_id=None):
     historico.reverse()
     
     conn.close()
-    return dispositivos, historico
+    return dispositivos, historico, contexto_scan
 
 def gerar_relatorio(scan_id=None, nome_arquivo=None):
     """Gera relatório PDF"""
     
     from reports.pdf_report import gerar_pdf
     
-    dispositivos, historico = extract_scan_data(scan_id)
+    dispositivos, historico, contexto_scan = extract_scan_data(scan_id)
     
     if not dispositivos:
         print('❌ Nenhum dado disponível')
@@ -123,7 +174,8 @@ def gerar_relatorio(scan_id=None, nome_arquivo=None):
         caminho = gerar_pdf(
             dispositivos=dispositivos,
             historico=historico if historico else None,
-            nome_arquivo=nome_arquivo
+            nome_arquivo=nome_arquivo,
+            contexto_scan=contexto_scan,
         )
         print(f'✅ Relatório gerado: {caminho}')
         if os.path.exists(caminho):
