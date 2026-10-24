@@ -12,6 +12,7 @@ services:
       INFRA_CVE_CACHE_TTL_HOURS: ${INFRA_CVE_CACHE_TTL_HOURS:-48}
       INFRA_CVE_MIN_CONFIDENCE: ${INFRA_CVE_MIN_CONFIDENCE:-70}
       INFRA_NVD_API_KEY: ${INFRA_NVD_API_KEY:-}
+      INFRA_TELEGRAM_TOKEN: ${INFRA_TELEGRAM_TOKEN:-}
     volumes:
       - ./storage:/app/storage
       - ./reports:/app/reports

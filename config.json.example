@@ -2,6 +2,5 @@
   "ambiente": "Casa",
   "gateway_ip": "",
   "telegram_alerts": true,
-  "telegram_token": "COLE_SEU_TOKEN_AQUI",
   "telegram_chat_id": "COLE_SEU_CHAT_ID_AQUI"
 }

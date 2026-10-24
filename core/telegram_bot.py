@@ -1,8 +1,10 @@
 import requests
 import json
 import os
+from dotenv import load_dotenv
 
 CONFIG_PATH = "config.json"
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
 
 def _get_config():
     if os.path.exists(CONFIG_PATH):
@@ -10,9 +12,12 @@ def _get_config():
             return json.load(f)
     return {}
 
+def _get_telegram_token():
+    return os.getenv("INFRA_TELEGRAM_TOKEN", "").strip()
+
 def enviar_telegram(mensagem):
     cfg = _get_config()
-    token = cfg.get("telegram_token", "")
+    token = _get_telegram_token()
     chat_id = cfg.get("telegram_chat_id", "")
     if not token or not chat_id:
         return False
@@ -37,7 +42,7 @@ def alerta_resumo(dados):
 def enviar_pdf_telegram(caminho_pdf):
     """Envia arquivo PDF via Telegram Bot"""
     cfg = _get_config()
-    token = cfg.get("telegram_token", "")
+    token = _get_telegram_token()
     chat_id = cfg.get("telegram_chat_id", "")
     
     if not token or not chat_id:
