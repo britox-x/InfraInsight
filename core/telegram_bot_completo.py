@@ -8,14 +8,18 @@ import threading
 import subprocess
 import sqlite3
 import re
+import html
 from datetime import datetime
+from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCANNER_PATH = os.path.join(BASE_DIR, 'scanner.py')
 DB_PATH = os.path.join(BASE_DIR, 'storage', 'infrainsight.db')
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 from core.wifi_scanner import scan_wifi_completo, listar_interfaces_wifi
+from core.persistence import obter_eventos_recentes
 
 CONFIG_PATH = "config.json"
 
@@ -25,9 +29,11 @@ def _get_config():
             return json.load(f)
     return {}
 
+def _get_telegram_token():
+    return os.getenv("INFRA_TELEGRAM_TOKEN", "").strip()
+
 def enviar_mensagem(chat_id, texto, parse_mode='Markdown'):
-    cfg = _get_config()
-    token = cfg.get("telegram_token", "")
+    token = _get_telegram_token()
     if not token:
         return False
     url = f"https://api.telegram.org/bot{token}/sendMessage"
@@ -38,8 +44,7 @@ def enviar_mensagem(chat_id, texto, parse_mode='Markdown'):
         return False
 
 def enviar_pdf(chat_id, caminho_pdf):
-    cfg = _get_config()
-    token = cfg.get("telegram_token", "")
+    token = _get_telegram_token()
     if not token or not os.path.exists(caminho_pdf):
         return False
     url = f"https://api.telegram.org/bot{token}/sendDocument"
@@ -76,6 +81,14 @@ def obter_ultimo_scan():
         return None
     except:
         return None
+
+
+def _formatar_horario_evento(timestamp):
+    try:
+        return datetime.fromisoformat(timestamp).strftime("%d/%m %H:%M")
+    except (TypeError, ValueError):
+        return str(timestamp or "—")
+
 
 def obter_dashboard_url():
     import subprocess
@@ -120,6 +133,7 @@ Olá! Vou te ajudar a cuidar da sua rede de forma simples.
 
 🔍 *Ver rede agora* → /scan
 📊 *Status atual* → /status  
+🕒 *Movimentações recentes* → /eventos
 📄 *Relatório completo* → /report
 🌐 *Redes Wi-Fi* → /wifi
 ❓ *Ajuda* → /help
@@ -137,6 +151,7 @@ Olá! Vou te ajudar a cuidar da sua rede de forma simples.
 📊 *Informações*
 /status - Ver saúde da rede
 /scan - Escanear dispositivos agora
+/eventos - Ver entradas e saídas recentes
 /report - Baixar relatório completo
 /dashboard - Link para painel admin
 
@@ -264,6 +279,37 @@ Olá! Vou te ajudar a cuidar da sua rede de forma simples.
         else:
             msg = "❌ *Ainda não fiz nenhum scan.*\n\nDigite /scan para começar!"
         enviar_mensagem(chat_id, msg)
+
+    elif texto == '/eventos':
+        events = obter_eventos_recentes(limite=10, db_path=DB_PATH)
+        if not events:
+            enviar_mensagem(
+                chat_id, "🕒 Nenhuma movimentação registrada ainda."
+            )
+        else:
+            lines = ["🕒 <b>Últimas movimentações na rede</b>", ""]
+            for event in events:
+                entered = event["event"] == "ENTROU"
+                marker = "🟢" if entered else "🔴"
+                label = "Entrou" if entered else "Saiu"
+                name = (
+                    event.get("device_name")
+                    or event.get("mac_address")
+                    or "Dispositivo sem identificação"
+                )
+                ip_address = event.get("ip_address") or "IP desconhecido"
+                randomized_suffix = (
+                    " · 🎲 MAC possivelmente rotativo"
+                    if event.get("mac_randomizado")
+                    else ""
+                )
+                lines.append(
+                    f"{marker} <code>{html.escape(_formatar_horario_evento(event.get('timestamp')))}</code> "
+                    f"<b>{label}</b> · {html.escape(str(name)[:48])} "
+                    f"({html.escape(str(ip_address)[:45])})"
+                    f"{randomized_suffix}"
+                )
+            enviar_mensagem(chat_id, "\n".join(lines), parse_mode="HTML")
     
     elif texto == '/scan':
         enviar_mensagem(chat_id, "🔍 *Iniciando verificação da rede...*\n\nAguarde! ⏳")
@@ -333,14 +379,18 @@ Olá! Vou te ajudar a cuidar da sua rede de forma simples.
 def iniciar_bot():
     print("="*50)
     print("Bot Telegram INFRAINSIGHT ativo!")
-    print("Comandos: /status, /scan, /report, /dashboard, /wifi, /help")
+    print("Comandos: /status, /scan, /eventos, /report, /dashboard, /wifi, /help")
     print("Novos: /ping, /uptime, /ip, /info")
     print("="*50)
+    if not _get_telegram_token():
+        print(
+            "[BOT] Configure INFRA_TELEGRAM_TOKEN no arquivo .env "
+            "para habilitar o polling."
+        )
     last_id = 0
     while True:
         try:
-            cfg = _get_config()
-            token = cfg.get("telegram_token", "")
+            token = _get_telegram_token()
             if not token:
                 time.sleep(10)
                 continue

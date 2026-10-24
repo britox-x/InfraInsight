@@ -161,6 +161,8 @@
             background: #ef444420;
             color: #ef4444;
         }
+        .mode-fast { color: #667eea; font-weight: 700; }
+        .mode-services { color: #b45309; font-weight: 700; }
 
         @media (max-width: 768px) {
             th, td {
@@ -192,6 +194,7 @@
 
     <div class="table-card">
         <h3>📊 Todos os Scans Realizados</h3>
+        <p>Compare resultados apenas entre scans com modo e fórmula iguais; scans antigos aparecem como legado/rápido.</p>
         <table>
             <thead>
                 <tr>
@@ -202,6 +205,8 @@
                     <th>Risco Médio</th>
                     <th>Desconhecidos</th>
                     <th>MAC Rand</th>
+                    <th>Modo</th>
+                    <th>Classificador / Fórmula</th>
                 </tr>
             </thead>
             <tbody>
@@ -216,10 +221,12 @@
                     </td>
                     <td>
                         <span class="badge badge-{% if scan.desconhecidos == 0 %}baixo{% elif scan.desconhecidos <= 3 %}médio{% else %}alto{% endif %}">
-                            {{ scan.desconhecidos }}
+                            {{ scan.desconhecidos if scan.classifier_version != 'v1' else 'N/D (legado)' }}
                         </span>
                     </td>
                     <td>{{ scan.mac_randomizados }}</td>
+                    <td class="{{ 'mode-services' if scan.scan_services else 'mode-fast' }}">{{ 'Serviços' if scan.scan_services else 'Rápido (ARP)' }}{% if scan.cve_lookup %} + NVD{% endif %}{% if scan.snmp_enabled %} + SNMP{% endif %}</td>
+                    <td>{{ scan.classifier_version }} / {{ scan.formula_version }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
