@@ -89,7 +89,11 @@ Fornecer uma solução acessível e fácil de usar para:
 
 Configure o token do bot em `INFRA_TELEGRAM_TOKEN` no arquivo local `.env`.
 Não armazene tokens no `config.json`, em exemplos versionados ou em relatórios;
-o arquivo `.env` é ignorado pelo Git.
+o arquivo `.env` é ignorado pelo Git. Restrinja o acesso com
+`INFRA_TELEGRAM_ALLOWED_USERS`, uma lista separada por vírgulas dos IDs
+numéricos das contas autorizadas (`message.from.id` no Telegram). A lista é
+obrigatória; sem IDs válidos, o bot não inicia e nenhum usuário é autorizado
+por padrão.
 
 ### 📊 Dashboard Web
 - 📈 **Gráficos interativos** de evolução do InfraScore
@@ -112,7 +116,7 @@ antes de expor o dashboard.
 
 ### 📄 Relatórios
 - 📑 **PDF profissional** com capa, tabelas e gráficos
-- 📊 **Gráficos**: Pizza (tipos de dispositivo), Barras (risco), Evolução (InfraScore)
+- 📊 **Gráficos**: Barras horizontais (tipos de dispositivo), risco e evolução
 - 📁 **Exportação CSV** para análise externa
 - 🧩 **CSV adicional por software/endpoint** quando a detecção de versões está ativa
 - 🕒 **Timestamp** automático em cada relatório

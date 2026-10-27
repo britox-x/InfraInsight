@@ -2,6 +2,7 @@
 import hashlib
 import hmac
 import json
+import logging
 import os
 import re
 import secrets
@@ -20,9 +21,11 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 APP_ENV = os.getenv("INFRA_ENV", "production").strip().lower()
+logger = logging.getLogger(__name__)
 
 from core.infra_score import (
     ADMIN_PORTS,
+    SCORE_WEIGHTS,
     decompor_infra_score,
     score_minimo_observado,
 )
@@ -230,6 +233,12 @@ def calcular_infra_score(scan_data, scan_metadata=None):
         motivos.append(f"CVEs conhecidas em software exposto (+{software_risk})")
     score = score_minimo_observado(components)
     coverage_complete = len(observed_components) == len(components)
+    verified_weight = sum(
+        SCORE_WEIGHTS.get(component.get("key"), 0)
+        for component in observed_components
+    )
+    total_weight = sum(SCORE_WEIGHTS.values())
+    coverage_percent = round(verified_weight / total_weight * 100)
     if not scan_services_enabled or not coverage_complete:
         status, cor = "⚠️ Cobertura parcial", "warning"
         if not scan_services_enabled:
@@ -265,7 +274,42 @@ def calcular_infra_score(scan_data, scan_metadata=None):
         "motivos": motivos,
         "componentes": components,
         "cobertura_completa": coverage_complete,
+        "verified_weight": verified_weight,
+        "total_weight": total_weight,
+        "coverage_percent": coverage_percent,
     }
+
+
+def _scan_age(timestamp, now=None):
+    try:
+        scanned_at = datetime.fromisoformat(timestamp)
+    except (TypeError, ValueError):
+        logger.warning("Timestamp inválido no scan mais recente: %r", timestamp)
+        return "idade indisponível", False
+
+    current_time = now
+    if current_time is None:
+        current_time = (
+            datetime.now(scanned_at.tzinfo)
+            if scanned_at.tzinfo
+            else datetime.now()
+        )
+    age_seconds = max(0, int((current_time - scanned_at).total_seconds()))
+    interval_seconds = int(os.getenv("INFRA_SCAN_INTERVAL", "21600"))
+    if interval_seconds <= 0:
+        raise ValueError("INFRA_SCAN_INTERVAL deve ser um inteiro positivo.")
+
+    minutes = age_seconds // 60
+    if minutes < 60:
+        age_label = f"há {minutes} min"
+    elif minutes < 1440:
+        hours, remaining_minutes = divmod(minutes, 60)
+        age_label = f"há {hours} h {remaining_minutes} min"
+    else:
+        days, remaining_minutes = divmod(minutes, 1440)
+        hours, remaining_minutes = divmod(remaining_minutes, 60)
+        age_label = f"há {days} d {hours} h"
+    return age_label, age_seconds > 2 * interval_seconds
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -307,6 +351,9 @@ def index():
         }
     else:
         latest_scan = dict(latest_scan)
+    latest_scan["age_label"], latest_scan["is_stale"] = _scan_age(
+        latest_scan.get("timestamp")
+    )
     try:
         scan_snapshot = json.loads(latest_scan.get("data_json") or "{}")
     except (TypeError, ValueError):
@@ -417,6 +464,7 @@ def index():
         new_devices=new_devices, has_previous_scan=has_previous_scan,
         scan_services_enabled=scan_services_enabled,
         cve_lookup_enabled=cve_lookup_enabled, now=datetime.now(),
+        snmp_enabled=bool(latest_scan.get("snmp_enabled", False)),
         username=current_user.username,
     )
 

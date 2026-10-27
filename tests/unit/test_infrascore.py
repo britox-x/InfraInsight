@@ -100,7 +100,7 @@ def test_h_detecta_http_no_gateway_sem_https(ports, expected):
     )
 
     component = next(item for item in resultado["components"] if item["key"] == "H")
-    assert component["name"] == "HTTP sem HTTPS no gateway"
+    assert component["name"] == "HTTP sem HTTPS detectado no gateway"
     assert component["value"] is expected
 
 

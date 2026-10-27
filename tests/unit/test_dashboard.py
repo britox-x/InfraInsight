@@ -8,6 +8,7 @@ import dashboard.app as dashboard
 import core.persistence as persistence
 from dashboard.app import (
     _anexar_software_a_dispositivos,
+    _scan_age,
     calcular_infra_score,
     mac_localmente_administrado,
 )
@@ -31,7 +32,40 @@ def test_calcular_infra_score_retorna_score_e_motivos(monkeypatch):
 
     assert resultado["score"] == pytest.approx(20 / 7)
     assert resultado["status"] == "⚠️ Atenção"
+    assert resultado["coverage_percent"] == 100
     assert "Telnet em 192.168.1.10" in resultado["motivos"]
+
+
+def test_idade_scan_indica_desatualizacao_apos_dois_intervalos(monkeypatch):
+    from datetime import datetime, timedelta
+
+    monkeypatch.setenv("INFRA_SCAN_INTERVAL", "3600")
+    scanned_at = datetime(2026, 1, 1, 12, 0)
+
+    age_label, stale = _scan_age(
+        scanned_at.isoformat(),
+        now=scanned_at + timedelta(hours=2),
+    )
+    assert age_label == "há 2 h 0 min"
+    assert stale is False
+
+    age_label, stale = _scan_age(
+        scanned_at.isoformat(),
+        now=scanned_at + timedelta(hours=2, seconds=1),
+    )
+    assert age_label == "há 2 h 0 min"
+    assert stale is True
+
+
+def test_idade_scan_invalida_e_intervalo_invalido(monkeypatch):
+    from datetime import datetime
+
+    assert _scan_age("timestamp inválido", now=datetime(2026, 1, 1))[0] == (
+        "idade indisponível"
+    )
+    monkeypatch.setenv("INFRA_SCAN_INTERVAL", "0")
+    with pytest.raises(ValueError, match="INFRA_SCAN_INTERVAL"):
+        _scan_age("2026-01-01T12:00:00", now=datetime(2026, 1, 1, 13))
 
 
 def test_software_e_cves_sao_agregados_ao_dispositivo_por_ip():
@@ -205,14 +239,23 @@ def test_dashboard_exibe_contexto_e_componentes_salvos(
     response = client.get("/")
 
     assert response.status_code == 200
-    assert b"Descoberta r\xc3\xa1pida (ARP)" in response.data
+    assert b"Scan r\xc3\xa1pido n\xc3\xa3o consultou software nem CVEs." in response.data
     assert b"+ SNMP" in response.data
     assert b"Cisco Router" in response.data
-    assert b"INFRA SCORE OBSERVADO (M\xc3\x8dNIMO)" in response.data
+    assert b"INFRA SCORE (PARCIAL)" in response.data
     assert b"U \xc2\xb7 Dispositivos desconhecidos" in response.data
     if classifier_version != "v1":
-        assert b"1,4/10" in response.data
+        assert b"\xe2\x89\xa5 1,4/10" in response.data
+        assert b"Cobertura da avalia\xc3\xa7\xc3\xa3o:" in response.data
+        assert b"10%</strong>" in response.data
+    assert b"Scan #" in response.data
+    assert b"idade indispon\xc3\xadvel" not in response.data
     assert b"Evid\xc3\xaancias observadas" in response.data
+    assert b"Identifica\xc3\xa7\xc3\xa3o SNMP" in response.data
+    assert b"Software / Vers\xc3\xa3o" not in response.data
+    assert b"CVEs</th>" not in response.data
+    assert b"Dispositivos por Tipo" in response.data
+    assert b"indexAxis: 'y'" in response.data
     assert b"Nenhuma movimenta\xc3\xa7\xc3\xa3o registrada ainda." in response.data
     assert re.search(
         rb"Desconhecidos</h3>\s*<div class=\"value\">\s*"
@@ -220,7 +263,6 @@ def test_dashboard_exibe_contexto_e_componentes_salvos(
         + rb"\s*</div>",
         response.data,
     )
-    assert b"N\xc3\xa3o verificado neste scan" in response.data
 
 
 def test_dashboard_compara_macs_com_scan_imediatamente_anterior(

@@ -32,6 +32,52 @@ def _get_config():
 def _get_telegram_token():
     return os.getenv("INFRA_TELEGRAM_TOKEN", "").strip()
 
+
+def _get_telegram_allowed_users():
+    configured_users = os.getenv("INFRA_TELEGRAM_ALLOWED_USERS", "")
+    entries = configured_users.split(",")
+    if not configured_users.strip() or any(not entry.strip() for entry in entries):
+        raise ValueError(
+            "Configure INFRA_TELEGRAM_ALLOWED_USERS com IDs numéricos "
+            "de usuários autorizados."
+        )
+
+    users = set()
+    for entry in entries:
+        user_id = entry.strip()
+        if not re.fullmatch(r"[0-9]+", user_id) or int(user_id) <= 0:
+            raise ValueError(
+                "INFRA_TELEGRAM_ALLOWED_USERS deve conter apenas IDs "
+                "numéricos positivos separados por vírgula."
+            )
+        users.add(int(user_id))
+    return users
+
+
+def _processar_atualizacao(update, authorized_users):
+    message = update.get("message")
+    if not isinstance(message, dict):
+        return
+
+    sender = message.get("from")
+    chat = message.get("chat")
+    if not isinstance(sender, dict) or not isinstance(chat, dict):
+        return
+
+    sender_id = sender.get("id")
+    if (
+        not isinstance(sender_id, int)
+        or isinstance(sender_id, bool)
+        or sender_id not in authorized_users
+    ):
+        return
+
+    text = message.get("text")
+    chat_id = chat.get("id")
+    if isinstance(text, str) and isinstance(chat_id, int):
+        processar_comando(text, chat_id)
+
+
 def enviar_mensagem(chat_id, texto, parse_mode='Markdown'):
     token = _get_telegram_token()
     if not token:
@@ -377,16 +423,16 @@ Olá! Vou te ajudar a cuidar da sua rede de forma simples.
         enviar_mensagem(chat_id, f"❌ *Comando '{texto}' não reconhecido.* Use /help")
 
 def iniciar_bot():
+    if not _get_telegram_token():
+        raise ValueError("Configure INFRA_TELEGRAM_TOKEN no arquivo .env.")
+    authorized_users = _get_telegram_allowed_users()
+
     print("="*50)
     print("Bot Telegram INFRAINSIGHT ativo!")
     print("Comandos: /status, /scan, /eventos, /report, /dashboard, /wifi, /help")
     print("Novos: /ping, /uptime, /ip, /info")
+    print(f"[BOT] Acesso restrito a {len(authorized_users)} usuário(s) autorizado(s).")
     print("="*50)
-    if not _get_telegram_token():
-        print(
-            "[BOT] Configure INFRA_TELEGRAM_TOKEN no arquivo .env "
-            "para habilitar o polling."
-        )
     last_id = 0
     while True:
         try:
@@ -400,8 +446,7 @@ def iniciar_bot():
             if data.get('ok'):
                 for u in data.get('result', []):
                     last_id = u['update_id']
-                    if 'message' in u and 'text' in u['message']:
-                        processar_comando(u['message']['text'], u['message']['chat']['id'])
+                    _processar_atualizacao(u, authorized_users)
             time.sleep(1)
         except Exception as e:
             print(f"Erro: {e}")

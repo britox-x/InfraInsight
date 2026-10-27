@@ -10,6 +10,65 @@ def test_token_telegram_vem_do_ambiente(monkeypatch):
     assert alert_bot._get_telegram_token() == "rotated-test-token"
 
 
+def test_lista_de_usuarios_autorizados_exige_ids_numericos(monkeypatch):
+    monkeypatch.setenv(
+        "INFRA_TELEGRAM_ALLOWED_USERS", "8569630444, 123456789"
+    )
+
+    assert telegram_bot._get_telegram_allowed_users() == {
+        8569630444,
+        123456789,
+    }
+
+
+def test_lista_de_usuarios_autorizados_falha_fechado(monkeypatch):
+    monkeypatch.setenv("INFRA_TELEGRAM_ALLOWED_USERS", "")
+
+    try:
+        telegram_bot._get_telegram_allowed_users()
+    except ValueError as error:
+        assert "INFRA_TELEGRAM_ALLOWED_USERS" in str(error)
+    else:
+        raise AssertionError("A lista vazia deveria impedir o início do bot")
+
+
+def test_atualizacao_so_executa_comando_de_usuario_autorizado(monkeypatch):
+    commands = []
+    monkeypatch.setattr(
+        telegram_bot,
+        "processar_comando",
+        lambda text, chat_id: commands.append((text, chat_id)),
+    )
+    update = {
+        "message": {
+            "from": {"id": 8569630444},
+            "chat": {"id": 456},
+            "text": "/ping",
+        }
+    }
+
+    telegram_bot._processar_atualizacao(update, {8569630444})
+    telegram_bot._processar_atualizacao(update, {123456789})
+
+    assert commands == [("/ping", 456)]
+
+
+def test_atualizacao_sem_remetente_nao_executa_comando(monkeypatch):
+    commands = []
+    monkeypatch.setattr(
+        telegram_bot,
+        "processar_comando",
+        lambda text, chat_id: commands.append((text, chat_id)),
+    )
+
+    telegram_bot._processar_atualizacao(
+        {"message": {"chat": {"id": 456}, "text": "/scan"}},
+        {8569630444},
+    )
+
+    assert commands == []
+
+
 def test_comando_eventos_envia_eventos_html_escapados(monkeypatch):
     messages = []
     monkeypatch.setattr(

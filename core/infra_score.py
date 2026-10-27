@@ -5,6 +5,7 @@ import json
 from typing import Any
 
 ADMIN_PORTS = {22, 3389, 5900, 8080, 8443}
+SCORE_WEIGHTS = {"T": 2, "Q": 2, "U": 1, "H": 1, "A": 1, "S": 3}
 
 
 def pontuar_vulnerabilidades(scan_data: Mapping[str, Any]) -> int:
@@ -123,43 +124,43 @@ def decompor_infra_score(
     values: dict[str, tuple[str, int, Any, str, bool]] = {
         "T": (
             "Telnet exposto",
-            2,
+            SCORE_WEIGHTS["T"],
             factors["telnet"],
             "Sim" if factors["telnet"] else "Não",
             scan_services,
         ),
         "Q": (
             "RTSP exposto",
-            2,
+            SCORE_WEIGHTS["Q"],
             factors["rtsp"],
             "Sim" if factors["rtsp"] else "Não",
             scan_services,
         ),
         "U": (
             "Dispositivos desconhecidos (>30%)",
-            1,
+            SCORE_WEIGHTS["U"],
             factors["unknown"],
             f"{unknown}/{total} ({unknown_ratio:.0%}); fator "
             f"{int(factors['unknown'])}",
             classification_observed,
         ),
         "H": (
-            "HTTP sem HTTPS no gateway",
-            1,
+            "HTTP sem HTTPS detectado no gateway",
+            SCORE_WEIGHTS["H"],
             factors["gateway_http"],
             "Sim" if factors["gateway_http"] else "Não",
             scan_services,
         ),
         "A": (
             "Porta administrativa exposta",
-            1,
+            SCORE_WEIGHTS["A"],
             factors["admin_ports"],
             "Sim" if factors["admin_ports"] else "Não",
             scan_services,
         ),
         "S": (
             "CVEs conhecidas",
-            "até 3",
+            f"até {SCORE_WEIGHTS['S']}",
             software_score,
             str(software_score),
             scan_services and cve_lookup and cve_coverage_complete,

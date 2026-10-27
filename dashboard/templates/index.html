@@ -55,6 +55,12 @@
         .cve-list{overflow-wrap:anywhere}
         .scan-context,.score-details{background:white;border-radius:16px;padding:20px;margin-bottom:25px;box-shadow:0 5px 15px rgba(0,0,0,0.1)}
         .scan-context p,.score-details p{margin-top:8px;color:#555}
+        .scan-chips{display:flex;flex-wrap:wrap;gap:8px}
+        .scan-chip{display:inline-flex;align-items:center;padding:7px 11px;border-radius:999px;background:#eef2ff;color:#3730a3;font-size:13px;font-weight:700}
+        .scan-chip.stale{background:#fef3c7;color:#92400e}
+        .scan-warning{margin-top:12px;padding:10px 12px;border-radius:10px;background:#fffbeb;color:#92400e;font-size:13px}
+        .score-coverage{margin-top:8px;font-size:14px}
+        .score-coverage strong{font-size:18px}
         .score-details summary{font-weight:700;cursor:pointer}
         .not-verified{color:#6b7280;background:#f3f4f6}
         .evidence{font-size:12px;color:#555}
@@ -86,10 +92,19 @@
     </div>
     <div class="banner"><h2>ANTENA INFRAINSIGHT</h2><p>InfraInsight: Descoberta, Inventário e Análise de Segurança para Redes de Pequeno Porte</p></div>
     <div class="scan-context">
-        <strong>Scan #{{ latest_scan.id }}</strong> · {{ latest_scan.timestamp[:19] }} ·
-        Modo: <strong>{{ 'Serviços' if latest_scan.scan_services else 'Descoberta rápida (ARP)' }}{% if latest_scan.cve_lookup %} + NVD{% endif %}{% if latest_scan.snmp_enabled %} + SNMP{% endif %}</strong>
-        {% if latest_scan.duracao_s is not none %} · Duração: {{ '%.1f'|format(latest_scan.duracao_s) }}s{% endif %}
-        · Classificador {{ latest_scan.classifier_version }} · Fórmula {{ latest_scan.formula_version }}
+        <div class="scan-chips">
+            <span class="scan-chip">Scan #{{ latest_scan.id }}</span>
+            <span class="scan-chip {{ 'stale' if latest_scan.is_stale else '' }}" title="{{ latest_scan.timestamp[:19] }}">
+                {{ latest_scan.age_label }}{% if latest_scan.is_stale %} · scan desatualizado{% endif %}
+            </span>
+            <span class="scan-chip">{{ 'Serviços' if latest_scan.scan_services else 'ARP' }}{% if latest_scan.cve_lookup %} + NVD{% endif %}{% if latest_scan.snmp_enabled %} + SNMP{% endif %}</span>
+            {% if latest_scan.duracao_s is not none %}<span class="scan-chip">{{ '%.1f'|format(latest_scan.duracao_s) }} s</span>{% endif %}
+            <span class="scan-chip">{{ latest_scan.classifier_version }}</span>
+            <span class="scan-chip">{{ latest_scan.formula_version }}</span>
+        </div>
+        {% if latest_scan.is_stale %}
+            <p class="scan-warning">O último scan passou de dois intervalos configurados. Os dados podem não refletir o estado atual da rede.</p>
+        {% endif %}
         <p>Varreduras de modos ou fórmulas diferentes não devem ser comparadas diretamente.</p>
     </div>
     <div class="stats-grid">
@@ -97,7 +112,8 @@
         <div class="stat-card"><h3>Dispositivos Ativos</h3><div class="value">{{ latest_scan.ips_ativos }}</div></div>
         <div class="stat-card"><h3>Desconhecidos</h3><div class="value">{% if latest_scan.id and latest_scan.classifier_version != 'v1' %}{{ latest_scan.desconhecidos }} / {{ latest_scan.ips_ativos }}{% else %}N/D{% endif %}</div></div>
         <div class="stat-card"><h3>Possíveis novos dispositivos</h3><div class="value">{% if has_previous_scan %}{{ new_devices|length }}{% else %}N/D{% endif %}</div><p>MACs não vistos no scan imediatamente anterior.</p></div>
-        <div class="stat-card infra-card"><h3>🏆 INFRA SCORE OBSERVADO (MÍNIMO)</h3><div class="score">{% if infra_score.score is not none %}{{ ('%.1f'|format(infra_score.score))|replace('.', ',') }}/10{% else %}N/D{% endif %}</div><div class="status {{ infra_score.cor }}">{{ infra_score.status }}</div>
+        <div class="stat-card infra-card"><h3>🏆 INFRA SCORE{% if infra_score.coverage_percent < 100 %} (PARCIAL){% endif %}</h3><div class="score">{% if infra_score.score is not none %}{% if infra_score.coverage_percent < 100 %}≥ {% endif %}{{ ('%.1f'|format(infra_score.score))|replace('.', ',') }}/10{% else %}N/D{% endif %}</div><div class="status {{ infra_score.cor }}">{{ infra_score.status }}</div>
+        <div class="score-coverage">Cobertura da avaliação: <strong>{{ infra_score.coverage_percent }}%</strong></div>
         {% if infra_score.motivos %}<div style="margin-top:15px;font-size:12px"><strong>Motivos:</strong><ul>{% for m in infra_score.motivos %}<li>{{ m }}</li>{% endfor %}</ul></div>{% endif %}
         </div>
     </div>
@@ -156,17 +172,24 @@
                 {% endfor %}
                 </tbody>
             </table>
-            <p>H representa HTTP exposto no gateway sem HTTPS detectado. É uma regra heurística de portas observadas, não uma validação de configuração TLS.</p>
+            <p>H é marcado quando a porta HTTP 80 está aberta no gateway e HTTPS 443 não foi detectada no scan. É uma regra heurística de portas observadas, não uma validação de configuração TLS.</p>
         </details>
     </div>
     <div class="charts-grid">
         <div class="chart-card"><h3>📈 Evolução do Risco</h3><canvas id="riskChart"></canvas></div>
-        <div class="chart-card"><h3>🥧 Distribuição por Tipo</h3><canvas id="typeChart"></canvas></div>
+        <div class="chart-card"><h3>📊 Dispositivos por Tipo</h3><canvas id="typeChart"></canvas></div>
     </div>
     <div class="table-card">
         <h3>📡 Dispositivos na Rede</h3>
+        {% if not scan_services_enabled or not snmp_enabled or (scan_services_enabled and not cve_lookup_enabled) %}
+            <p class="scan-warning">
+                {% if not scan_services_enabled %}Scan rápido não consultou software nem CVEs.{% else %}CVEs não foram consultadas neste scan.{% endif %}
+                {% if not snmp_enabled %} SNMP também não foi consultado.{% endif %}
+                {% if not scan_services_enabled or (scan_services_enabled and not cve_lookup_enabled) %} Configure os recursos desejados e execute um scan apropriado para obter esses dados.{% endif %}
+            </p>
+        {% endif %}
         <table>
-            <thead><tr><th>IP</th><th>Host</th><th>Tipo</th><th>Fabricante</th><th>Evidências observadas</th><th>Identificação SNMP</th><th>Software / Versão</th><th>CVEs</th></tr></thead>
+            <thead><tr><th>IP</th><th>Host</th><th>Tipo</th><th>Fabricante</th><th>Evidências observadas</th>{% if snmp_enabled %}<th>Identificação SNMP</th>{% endif %}{% if scan_services_enabled %}<th>Software / Versão</th>{% endif %}{% if scan_services_enabled and cve_lookup_enabled %}<th>CVEs</th>{% endif %}</tr></thead>
             <tbody>
             {% for d in devices %}
                 <tr>
@@ -175,7 +198,7 @@
                     <td>{{ 'Computador reconhecido' if d.tipo == 'computador_conhecido' else d.tipo|replace('_', ' ') }}</td>
                     <td title="{{ d.mac or '' }}">{{ d.fabricante_display }}</td>
                     <td class="evidence">{{ d.classificacao_evidencia|join('; ') }}</td>
-                    <td class="evidence">
+                    {% if snmp_enabled %}<td class="evidence">
                         {% if d.snmp_info %}
                             {{ d.snmp_info.description or d.snmp_info.object_id or 'Resposta SNMP sem descrição' }}
                             {% if d.snmp_info.location %}<br>Local: {{ d.snmp_info.location }}{% endif %}
@@ -184,8 +207,8 @@
                         {% else %}
                             <span class="badge badge-neutral">Não consultado</span>
                         {% endif %}
-                    </td>
-                    <td>
+                    </td>{% endif %}
+                    {% if scan_services_enabled %}<td>
                         {% if not scan_services_enabled %}
                             <span class="badge badge-neutral">Não verificado neste scan</span>
                         {% else %}
@@ -195,8 +218,8 @@
                             <span class="badge badge-neutral">Não identificado</span>
                         {% endfor %}
                         {% endif %}
-                    </td>
-                    <td class="cve-list">
+                    </td>{% endif %}
+                    {% if scan_services_enabled and cve_lookup_enabled %}<td class="cve-list">
                         {% if d.cve_ids %}
                             <span class="badge badge-cve">{{ d.cve_ids|length }} CVE(s)</span><br>
                             {{ d.cve_ids|join(', ') }}
@@ -209,10 +232,10 @@
                         {% else %}
                             <span class="badge badge-neutral">Nenhum software identificado</span>
                         {% endif %}
-                    </td>
+                    </td>{% endif %}
                 </tr>
             {% else %}
-                <tr><td colspan="8">Nenhum dispositivo encontrado no scan mais recente.</td></tr>
+                <tr><td colspan="{{ 5 + (1 if snmp_enabled else 0) + (1 if scan_services_enabled else 0) + (1 if scan_services_enabled and cve_lookup_enabled else 0) }}">Nenhum dispositivo encontrado no scan mais recente.</td></tr>
             {% endfor %}
             </tbody>
         </table>
@@ -237,8 +260,9 @@
     const tipos = {{ tipos_count|tojson }};
     if (tipos && Object.keys(tipos).length) {
         new Chart(document.getElementById('typeChart'), {
-            type: 'doughnut',
-            data: { labels: Object.keys(tipos), datasets: [{ data: Object.values(tipos), backgroundColor: ['#10b981','#667eea','#f59e0b','#ef4444'] }] }
+            type: 'bar',
+            data: { labels: Object.keys(tipos), datasets: [{ label: 'Dispositivos', data: Object.values(tipos), backgroundColor: '#667eea', borderRadius: 6 }] },
+            options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
         });
     }
 </script>
