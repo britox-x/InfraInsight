@@ -33,6 +33,7 @@ from core.snmp_scanner import (
     consultar_hosts_snmp,
     integrar_dados_snmp,
 )
+from core.infra_score import cobertura_infra_score, decompor_infra_score
 
 init_database()
 
@@ -261,7 +262,7 @@ if dispositivos:
     resultado = {
         'dispositivos': dispositivos,
         'ips_ativos': len(dispositivos),
-        'risco_medio': 0,
+        'risco_medio': None,
         'desconhecidos': contar_dispositivos_desconhecidos(dispositivos),
         'ambiente': ambiente,
         'gateway': gateway,
@@ -324,14 +325,18 @@ if dispositivos:
         'cve_coverage_complete': cve_coverage_complete,
         'duracao_s': round(time.monotonic() - scan_started, 2),
     })
-    from core.infra_score import decompor_infra_score
-
-    resultado['componentes'] = decompor_infra_score(
+    score_result = decompor_infra_score(
         resultado,
         scan_services=scan_services,
         cve_lookup=cve_lookup and scan_services,
         cve_coverage_complete=cve_coverage_complete,
-    )['components']
+    )
+    resultado['componentes'] = score_result['components']
+    resultado['infra_score'] = score_result['score']
+    resultado['infra_score_cobertura'] = cobertura_infra_score(
+        score_result['components']
+    )
+    resultado['score_formula'] = resultado['formula_version']
     scan_id = salvar_scan(resultado)
     print(f"\n💾 Scan salvo com ID: {scan_id}")
     
@@ -351,9 +356,10 @@ if dispositivos:
             print(f"⚠️ Erro ao exportar inventário de software: {error}")
 else:
     print("\n⚠️ Nenhum dispositivo encontrado (verifique o firewall)")
-    scan_id = salvar_scan({
+    scan_vazio = {
         'dispositivos': [],
         'ips_ativos': 0,
+        'risco_medio': None,
         'ambiente': ambiente,
         'gateway': gateway,
         'rede': rede,
@@ -361,9 +367,28 @@ else:
         'modo': 'servicos' if scan_services else 'rapido',
         'scan_services': scan_services,
         'snmp_enabled': snmp_enabled,
+        'classifier_version': (
+            'v2-conservador-snmp' if snmp_enabled else 'v2-conservador'
+        ),
+        'formula_version': 'normalizada-7-v1',
         'timestamp': datetime.now().isoformat(),
         'duracao_s': round(time.monotonic() - scan_started, 2),
+    }
+    score_result = decompor_infra_score(
+        scan_vazio,
+        scan_services=scan_services,
+        cve_lookup=cve_lookup and scan_services,
+        cve_coverage_complete=False,
+    )
+    scan_vazio.update({
+        'componentes': score_result['components'],
+        'infra_score': score_result['score'],
+        'infra_score_cobertura': cobertura_infra_score(
+            score_result['components']
+        ),
+        'score_formula': scan_vazio['formula_version'],
     })
+    scan_id = salvar_scan(scan_vazio)
     print(f"💾 Scan vazio salvo com ID: {scan_id}")
 
 print("\n✅ Scanner finalizado!")

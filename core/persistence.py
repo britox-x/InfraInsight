@@ -90,6 +90,9 @@ def iniciar_banco():
         ("formula_version", "TEXT NOT NULL DEFAULT 'normalizada-7-v1'"),
         ("duracao_s", "REAL"),
         ("componentes_json", "TEXT"),
+        ("infra_score", "REAL"),
+        ("infra_score_cobertura", "REAL"),
+        ("score_formula", "TEXT"),
     ):
         if column not in scan_columns:
             cursor.execute(
@@ -350,21 +353,22 @@ def salvar_scan(scan_data):
     cursor = conn.cursor()
     
     try:
-        # Inserir scan na tabela scans (sem indicador_medio)
+        # Inserir o resultado do score calculado pelo scanner.
         cursor.execute("""
             INSERT INTO scans (
                 timestamp, ambiente, ips_ativos, uso, risco_medio,
                 desconhecidos, mac_randomizados, recomendacao, data_json,
                 modo, scan_services, snmp_enabled, cve_lookup,
                 classifier_version, formula_version, duracao_s,
-                componentes_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                componentes_json, infra_score, infra_score_cobertura,
+                score_formula
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             scan_data.get('timestamp', datetime.now().isoformat()),
             scan_data.get('ambiente', 'Casa'),
             scan_data.get('ips_ativos', 0),
             scan_data.get('uso', 0),
-            scan_data.get('risco_medio', 0),
+            scan_data.get('risco_medio'),
             scan_data.get('desconhecidos', 0),
             scan_data.get('mac_randomizados', 0),
             scan_data.get('recomendacao', 'OK'),
@@ -379,6 +383,9 @@ def salvar_scan(scan_data):
             json.dumps(
                 scan_data.get('componentes', []), ensure_ascii=False
             ),
+            scan_data.get('infra_score'),
+            scan_data.get('infra_score_cobertura'),
+            scan_data.get('score_formula'),
         ))
         
         scan_id = cursor.lastrowid

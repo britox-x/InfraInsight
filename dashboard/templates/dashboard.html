@@ -46,10 +46,10 @@
         <div class="stat-card"><h3>Total de Scans</h3><div class="value">{{ total_scans }}</div></div>
         <div class="stat-card"><h3>Dispositivos Ativos</h3><div class="value">{{ latest_scan.ips_ativos }}</div></div>
         <div class="stat-card"><h3>Desconhecidos</h3><div class="value">{{ latest_scan.desconhecidos }}</div></div>
-        <div class="infra-card"><h3>🏆 INFRA SCORE</h3><div class="score">{{ infra_score.score }}/10</div><div>{{ infra_score.status }}</div></div>
+        <div class="infra-card"><h3>🏆 INFRA SCORE — Scan #{{ latest_scan.id }}</h3><div class="score">{{ infra_score.texto }}</div><div>{{ infra_score.status }}</div></div>
     </div>
     <div class="charts-grid">
-        <div class="chart-card"><h3>📈 Evolução do Risco</h3><canvas id="riskChart"></canvas></div>
+        <div class="chart-card"><h3>📈 Risco médio por dispositivo</h3><canvas id="riskChart"></canvas></div>
         <div class="chart-card"><h3>🥧 Distribuição por Tipo</h3><canvas id="typeChart"></canvas></div>
     </div>
     <div class="table-card">
@@ -64,7 +64,7 @@
     if (evolucao.length) {
         new Chart(document.getElementById('riskChart'), {
             type: 'line',
-            data: { labels: [...evolucao].reverse().map(e => e.timestamp.slice(5,16)), datasets: [{ label: 'Risco Médio', data: [...evolucao].reverse().map(e => e.risco_medio), borderColor: '#ef4444', fill: true }] }
+            data: { labels: [...evolucao].reverse().map(e => e.timestamp.slice(5,16)), datasets: [{ label: 'Risco médio por dispositivo', data: [...evolucao].reverse().map(e => e.risco_medio), borderColor: '#ef4444', fill: true }] }
         });
     }
     const tipos = {{ tipos_count|tojson }};

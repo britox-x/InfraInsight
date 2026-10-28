@@ -112,8 +112,8 @@
         <div class="stat-card"><h3>Dispositivos Ativos</h3><div class="value">{{ latest_scan.ips_ativos }}</div></div>
         <div class="stat-card"><h3>Desconhecidos</h3><div class="value">{% if latest_scan.id and latest_scan.classifier_version != 'v1' %}{{ latest_scan.desconhecidos }} / {{ latest_scan.ips_ativos }}{% else %}N/D{% endif %}</div></div>
         <div class="stat-card"><h3>Possíveis novos dispositivos</h3><div class="value">{% if has_previous_scan %}{{ new_devices|length }}{% else %}N/D{% endif %}</div><p>MACs não vistos no scan imediatamente anterior.</p></div>
-        <div class="stat-card infra-card"><h3>🏆 INFRA SCORE{% if infra_score.coverage_percent < 100 %} (PARCIAL){% endif %}</h3><div class="score">{% if infra_score.score is not none %}{% if infra_score.coverage_percent < 100 %}≥ {% endif %}{{ ('%.1f'|format(infra_score.score))|replace('.', ',') }}/10{% else %}N/D{% endif %}</div><div class="status {{ infra_score.cor }}">{{ infra_score.status }}</div>
-        <div class="score-coverage">Cobertura da avaliação: <strong>{{ infra_score.coverage_percent }}%</strong></div>
+        <div class="stat-card infra-card"><h3>🏆 INFRA SCORE{% if infra_score.coverage_percent is not none and infra_score.coverage_percent < 100 %} (PARCIAL){% endif %}</h3><div class="score">{{ infra_score.texto }}</div><div class="status {{ infra_score.cor }}">{{ infra_score.status }}</div>
+        <div class="score-coverage">Cobertura da avaliação: <strong>{{ infra_score.coverage_percent if infra_score.coverage_percent is not none else '—' }}{% if infra_score.coverage_percent is not none %}%{% endif %}</strong></div>
         {% if infra_score.motivos %}<div style="margin-top:15px;font-size:12px"><strong>Motivos:</strong><ul>{% for m in infra_score.motivos %}<li>{{ m }}</li>{% endfor %}</ul></div>{% endif %}
         </div>
     </div>
@@ -176,7 +176,7 @@
         </details>
     </div>
     <div class="charts-grid">
-        <div class="chart-card"><h3>📈 Evolução do Risco</h3><canvas id="riskChart"></canvas></div>
+        <div class="chart-card"><h3>📈 Risco médio por dispositivo</h3><canvas id="riskChart"></canvas></div>
         <div class="chart-card"><h3>📊 Dispositivos por Tipo</h3><canvas id="typeChart"></canvas></div>
     </div>
     <div class="table-card">
@@ -245,13 +245,13 @@
     const evolucao = {{ evolucao|tojson }};
     if (evolucao && evolucao.length) {
         const rev = [...evolucao].reverse();
-        const fast = rev.map(e => e.modo === 'servicos' ? null : e.risco_medio);
-        const services = rev.map(e => e.modo === 'servicos' ? e.risco_medio : null);
+        const fast = rev.map(e => e.modo === 'servicos' || e.risco_medio === null ? null : e.risco_medio);
+        const services = rev.map(e => e.modo === 'servicos' && e.risco_medio !== null ? e.risco_medio : null);
         new Chart(document.getElementById('riskChart'), {
             type: 'line',
             data: { labels: rev.map(e => e.timestamp.slice(5,16)), datasets: [
-                { label: 'Risco médio · rápido', data: fast, borderColor: '#667eea', spanGaps: false },
-                { label: 'Risco médio · serviços', data: services, borderColor: '#f59e0b', spanGaps: false },
+                { label: 'Risco médio por dispositivo · rápido', data: fast, borderColor: '#667eea', spanGaps: false },
+                { label: 'Risco médio por dispositivo · serviços', data: services, borderColor: '#f59e0b', spanGaps: false },
                 { label: 'Dispositivos', data: rev.map(e => e.ips_ativos), borderColor: '#764ba2', yAxisID: 'y1' }
             ] },
             options: { scales: { y: { beginAtZero: true }, y1: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false } } } }

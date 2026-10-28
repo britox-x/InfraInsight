@@ -4,7 +4,9 @@ import pytest
 
 from core.infra_score import (
     calcular_infra_score,
+    cobertura_infra_score,
     decompor_infra_score,
+    formatar_infra_score,
     score_minimo_observado,
 )
 
@@ -116,3 +118,19 @@ def test_score_minimo_observado_usa_apenas_componentes_com_valor():
         "key": "U",
         "status": "observado",
     }]) is None
+
+
+def test_formatador_infrascore_preserva_ausencia_e_formata_cobertura():
+    assert formatar_infra_score(None, 0.1) == "—"
+    assert formatar_infra_score(1.42857, 0.1) == (
+        "≥ 1,4/10 (cobertura 10%)"
+    )
+
+
+def test_cobertura_infrascore_usa_pesos_existentes_sem_altera_los():
+    components = [
+        {"key": "U", "status": "observado"},
+        {"key": "T", "status": "não verificado"},
+    ]
+
+    assert cobertura_infra_score(components) == pytest.approx(0.1)

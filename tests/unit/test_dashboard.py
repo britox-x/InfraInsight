@@ -191,7 +191,7 @@ def test_login_migra_hash_sha256_legado(monkeypatch, tmp_path):
 def test_dashboard_exibe_contexto_e_componentes_salvos(
     monkeypatch, tmp_path, classifier_version, unknown_display
 ):
-    from core.infra_score import decompor_infra_score
+    from core.infra_score import cobertura_infra_score, decompor_infra_score
 
     db_path = tmp_path / "dashboard.db"
     monkeypatch.setattr(dashboard, "DB_PATH", str(db_path))
@@ -223,13 +223,19 @@ def test_dashboard_exibe_contexto_e_componentes_salvos(
             },
         }],
     }
-    scan["componentes"] = decompor_infra_score(
+    score_result = decompor_infra_score(
         scan,
         scan_services=False,
         cve_lookup=False,
         cve_coverage_complete=False,
         classification_observed=classifier_version != "v1",
-    )["components"]
+    )
+    scan["componentes"] = score_result["components"]
+    scan["infra_score"] = score_result["score"]
+    scan["infra_score_cobertura"] = cobertura_infra_score(
+        score_result["components"]
+    )
+    scan["score_formula"] = scan["formula_version"]
     persistence.salvar_scan(scan)
 
     client = dashboard.app.test_client()
@@ -243,11 +249,15 @@ def test_dashboard_exibe_contexto_e_componentes_salvos(
     assert b"+ SNMP" in response.data
     assert b"Cisco Router" in response.data
     assert b"INFRA SCORE (PARCIAL)" in response.data
+    assert b"InfraScore" in response.data
+    assert b"Scan #1" in response.data
     assert b"U \xc2\xb7 Dispositivos desconhecidos" in response.data
     if classifier_version != "v1":
-        assert b"\xe2\x89\xa5 1,4/10" in response.data
+        assert b"\xe2\x89\xa5 1,4/10 (cobertura 10%)" in response.data
         assert b"Cobertura da avalia\xc3\xa7\xc3\xa3o:" in response.data
         assert b"10%</strong>" in response.data
+    else:
+        assert b"\xe2\x80\x94" in response.data
     assert b"Scan #" in response.data
     assert b"idade indispon\xc3\xadvel" not in response.data
     assert b"Evid\xc3\xaancias observadas" in response.data

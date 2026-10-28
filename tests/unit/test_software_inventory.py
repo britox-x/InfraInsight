@@ -594,11 +594,12 @@ def test_migracao_preserva_scans_legados_com_defaults_conservadores(
         row = conn.execute(
             "SELECT id, ips_ativos, desconhecidos, modo, scan_services, "
             "snmp_enabled, cve_lookup, classifier_version, formula_version, "
-            "duracao_s "
+            "duracao_s, infra_score, infra_score_cobertura, score_formula "
             "FROM scans WHERE id = 37"
         ).fetchone()
     assert row == (
-        37, 5, 0, "rapido", 0, 0, 0, "v1", "normalizada-7-v1", None
+        37, 5, 0, "rapido", 0, 0, 0, "v1", "normalizada-7-v1", None,
+        None, None, None,
     )
 
 
@@ -701,16 +702,32 @@ def test_pdf_le_componentes_canonicos_e_preserva_mac_ausente(
     with sqlite3.connect(db_path) as conn:
         conn.execute(
             "CREATE TABLE scans (id INTEGER PRIMARY KEY, timestamp TEXT, "
-            "data_json TEXT, componentes_json TEXT)"
+            "ips_ativos INTEGER, "
+            "data_json TEXT, componentes_json TEXT, infra_score REAL, "
+            "infra_score_cobertura REAL, score_formula TEXT, "
+            "formula_version TEXT, classifier_version TEXT, "
+            "duracao_s REAL, modo TEXT, scan_services INTEGER, "
+            "snmp_enabled INTEGER, cve_lookup INTEGER)"
         )
         conn.execute(
-            "INSERT INTO scans VALUES (?, ?, ?, ?)",
+            "INSERT INTO scans VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 39,
                 "2026-10-24T01:00:00",
+                1,
                 json.dumps(scan_data),
                 json.dumps(canonical_components),
-            ),
+                None,
+                None,
+                None,
+                "normalizada-7-v1",
+                "v2-conservador",
+                None,
+                "rapido",
+                0,
+                0,
+                0,
+            )
         )
 
     devices, _, context = extract_scan_data(39)
@@ -718,7 +735,7 @@ def test_pdf_le_componentes_canonicos_e_preserva_mac_ausente(
     assert devices[0]["ip"] == "192.0.2.13"
     assert devices[0]["mac"] == ""
     assert context["componentes"] == canonical_components
-    assert context["score_observado"] == pytest.approx(10 / 7)
+    assert context["infra_score_text"] == "—"
     assert context["componentes_observados"] == ["U"]
 
 

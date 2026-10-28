@@ -202,7 +202,8 @@
                     <th>Data/Hora</th>
                     <th>Dispositivos</th>
                     <th>Uso da Rede</th>
-                    <th>Risco Médio</th>
+                    <th>Risco médio por dispositivo</th>
+                    <th>InfraScore</th>
                     <th>Desconhecidos</th>
                     <th>MAC Rand</th>
                     <th>Modo</th>
@@ -216,9 +217,10 @@
                     <td>{{ scan.timestamp[:19] }}</td>
                     <td>{{ scan.ips_ativos }}</td>
                     <td>{{ "%.1f"|format(scan.uso) }}%</td>
-                    <td class="{% if scan.risco_medio <= 2 %}risk-low{% elif scan.risco_medio <= 5 %}risk-medium{% else %}risk-high{% endif %}">
-                        {{ "%.1f"|format(scan.risco_medio) }}/10
+                    <td class="{% if scan.risco_medio is none %}risk-unknown{% elif scan.risco_medio <= 2 %}risk-low{% elif scan.risco_medio <= 5 %}risk-medium{% else %}risk-high{% endif %}">
+                        {% if scan.risco_medio is not none %}{{ "%.1f"|format(scan.risco_medio) }}/10{% else %}—{% endif %}
                     </td>
+                    <td>{{ scan.infra_score_text }}</td>
                     <td>
                         <span class="badge badge-{% if scan.desconhecidos == 0 %}baixo{% elif scan.desconhecidos <= 3 %}médio{% else %}alto{% endif %}">
                             {{ scan.desconhecidos if scan.classifier_version != 'v1' else 'N/D (legado)' }}

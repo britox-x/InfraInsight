@@ -37,7 +37,12 @@ def alerta_porta(ip, porta, servico):
     return enviar_telegram(msg)
 
 def alerta_resumo(dados):
-    msg = f"📊 SCAN FINALIZADO\nIPs: {dados.get('ips_ativos',0)}\nRisco: {dados.get('risco_medio',0)}/10"
+    risk = dados.get("risco_medio")
+    risk_text = f"{risk}/10" if risk is not None else "—"
+    msg = (
+        f"📊 SCAN FINALIZADO\nIPs: {dados.get('ips_ativos', 0)}\n"
+        f"Risco médio por dispositivo: {risk_text}"
+    )
     return enviar_telegram(msg)
 def enviar_pdf_telegram(caminho_pdf):
     """Envia arquivo PDF via Telegram Bot"""

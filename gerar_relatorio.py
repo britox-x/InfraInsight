@@ -6,7 +6,7 @@ import os
 import sqlite3
 import json
 from datetime import datetime
-from core.infra_score import decompor_infra_score, score_minimo_observado
+from reports.pdf_report import formatar_score_pdf
 
 sys.path.insert(0, '.')
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -20,13 +20,15 @@ def extract_scan_data(scan_id=None):
     
     if scan_id:
         cursor.execute(
-            'SELECT id, timestamp, data_json, componentes_json FROM scans '
+            'SELECT id, timestamp, data_json, componentes_json, infra_score, '
+            'infra_score_cobertura, score_formula FROM scans '
             'WHERE id = ?',
             (scan_id,),
         )
     else:
         cursor.execute(
-            'SELECT id, timestamp, data_json, componentes_json FROM scans '
+            'SELECT id, timestamp, data_json, componentes_json, infra_score, '
+            'infra_score_cobertura, score_formula FROM scans '
             'ORDER BY id DESC LIMIT 1'
         )
     
@@ -48,20 +50,10 @@ def extract_scan_data(scan_id=None):
     classifier_version = data.get('classifier_version', 'v1')
     try:
         componentes = json.loads(row[3]) if row[3] else []
-    except (TypeError, ValueError):
-        componentes = []
+    except (TypeError, ValueError) as error:
+        raise ValueError(f'Componentes inválidos no scan #{scan_id}') from error
     if not componentes:
         componentes = data.get('componentes', [])
-    if not componentes:
-        componentes = decompor_infra_score(
-            data,
-            scan_services=bool(data.get('scan_services', False)),
-            cve_lookup=bool(data.get('cve_lookup', False)),
-            cve_coverage_complete=bool(
-                data.get('cve_coverage_complete', False)
-            ),
-            classification_observed=classifier_version != 'v1',
-        )['components']
     componentes_observados = [
         component.get('key')
         for component in componentes
@@ -70,6 +62,13 @@ def extract_scan_data(scan_id=None):
 
     contexto_scan = {
         'id': scan_id,
+        'infra_score': row[4],
+        'infra_score_cobertura': row[5],
+        'score_formula': row[6],
+        'infra_score_text': formatar_score_pdf({
+            'infra_score': row[4],
+            'infra_score_cobertura': row[5],
+        }),
         'modo': (
             'Serviços' if data.get('scan_services') else 'Rápido (ARP)'
         ) + (
@@ -85,7 +84,6 @@ def extract_scan_data(scan_id=None):
             'formula_version', 'normalizada-7-v1'
         ),
         'componentes': componentes,
-        'score_observado': score_minimo_observado(componentes),
         'componentes_observados': componentes_observados,
     }
     print(f'📊 Scan ID: {scan_id}')
@@ -126,25 +124,15 @@ def extract_scan_data(scan_id=None):
     
     # Histórico
     cursor.execute('''
-        SELECT id, timestamp, data_json FROM scans 
+        SELECT id, timestamp, ips_ativos FROM scans
         ORDER BY id DESC LIMIT 10
     ''')
     historico = []
     for row in cursor.fetchall():
-        try:
-            hist_data = json.loads(row[2]) if row[2] else {}
-            score = hist_data.get('risco_medio', 0)
-            if isinstance(score, str):
-                try:
-                    score = float(score)
-                except:
-                    score = 0
-            historico.append({
-                'data': row[1][:10] if row[1] else '',
-                'score': score
-            })
-        except:
-            pass
+        historico.append({
+            'data': row[1][:10] if row[1] else '',
+            'total_dispositivos': row[2],
+        })
     historico.reverse()
     
     conn.close()

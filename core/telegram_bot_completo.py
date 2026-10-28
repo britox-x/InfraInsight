@@ -18,6 +18,7 @@ SCANNER_PATH = os.path.join(BASE_DIR, 'scanner.py')
 DB_PATH = os.path.join(BASE_DIR, 'storage', 'infrainsight.db')
 load_dotenv(os.path.join(BASE_DIR, '.env'))
 
+from core.infra_score import formatar_infra_score
 from core.wifi_scanner import scan_wifi_completo, listar_interfaces_wifi
 from core.persistence import obter_eventos_recentes
 
@@ -114,19 +115,32 @@ def encontrar_ultimo_pdf():
     return os.path.join(reports_dir, pdfs[0])
 
 def obter_ultimo_scan():
-    try:
-        if not os.path.exists(DB_PATH):
-            return None
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT timestamp, ips_ativos, risco_medio FROM scans ORDER BY id DESC LIMIT 1")
-        result = cursor.fetchone()
-        conn.close()
-        if result:
-            return {'timestamp': result[0][:19], 'dispositivos': result[1], 'risco': result[2]}
+    if not os.path.exists(DB_PATH):
         return None
-    except:
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        result = conn.execute(
+            "SELECT id, timestamp, ips_ativos, infra_score, "
+            "infra_score_cobertura, score_formula "
+            "FROM scans ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    if not result:
         return None
+    return {
+        "id": result["id"],
+        "timestamp": result["timestamp"][:19] if result["timestamp"] else "—",
+        "dispositivos": result["ips_ativos"],
+        "infra_score": result["infra_score"],
+        "infra_score_cobertura": result["infra_score_cobertura"],
+        "score_formula": result["score_formula"],
+        "score_texto": formatar_score_status(result),
+    }
+
+
+def formatar_score_status(scan):
+    return formatar_infra_score(
+        scan["infra_score"], scan["infra_score_cobertura"]
+    )
 
 
 def _formatar_horario_evento(timestamp):
@@ -303,10 +317,13 @@ Olá! Vou te ajudar a cuidar da sua rede de forma simples.
     elif texto == '/status':
         scan = obter_ultimo_scan()
         if scan:
-            if scan['risco'] <= 2:
+            if scan["infra_score"] is None:
+                status_emoji = "⚪"
+                status_texto = "InfraScore indisponível"
+            elif scan["infra_score"] <= 2:
                 status_emoji = "✅"
                 status_texto = "Tudo seguro!"
-            elif scan['risco'] <= 5:
+            elif scan["infra_score"] <= 5:
                 status_emoji = "⚠️"
                 status_texto = "Alguns cuidados necessários"
             else:
@@ -317,8 +334,9 @@ Olá! Vou te ajudar a cuidar da sua rede de forma simples.
 {status_emoji} *SAÚDE DA SUA REDE*
 
 📡 *Dispositivos conectados:* {scan['dispositivos']}
+🆔 *Scan:* #{scan['id']}
 📊 *Nível de segurança:* {status_texto}
-⚠️ *Risco:* {scan['risco']}/10
+⚠️ *InfraScore:* {scan['score_texto']}
 
 📱 *Para detalhes:* /report
             """

@@ -232,6 +232,27 @@ def score_minimo_observado(components: list[Mapping[str, Any]]) -> float | None:
     return min(10.0, weighted_score * 10.0 / 7.0)
 
 
+def cobertura_infra_score(components: list[Mapping[str, Any]]) -> float:
+    """Retorna a fração do peso total correspondente a componentes observados."""
+    total_weight = sum(SCORE_WEIGHTS.values())
+    verified_weight = sum(
+        SCORE_WEIGHTS.get(str(component.get("key")), 0)
+        for component in components
+        if component.get("status") == "observado"
+    )
+    return verified_weight / total_weight if total_weight else 0.0
+
+
+def formatar_infra_score(
+    score: float | None, coverage: float | None
+) -> str:
+    """Formata o score persistido sem substituir dados ausentes por zero."""
+    if score is None or coverage is None:
+        return "—"
+    score_text = f"{score:.1f}".replace(".", ",")
+    return f"≥ {score_text}/10 (cobertura {coverage:.0%})"
+
+
 def calcular_infra_score(
     scan_data: Mapping[str, Any] | None = None,
     *,

@@ -26,7 +26,7 @@ from reportlab.platypus import (
 )
 from reportlab.pdfgen import canvas as rl_canvas
 from core.classifier import formatar_hostname, mac_localmente_administrado
-from core.infra_score import score_minimo_observado
+from core.infra_score import formatar_infra_score
 
 # ── Tenta importar gerador de gráficos ──────────────────────────────────────
 try:
@@ -245,10 +245,10 @@ def _capa(estilos, total_dispositivos, total_desconhecidos,
 
     # Cards de métricas na capa
     dados_metricas = [
-        ['Dispositivos\nDetectados', 'Desconhecidos', 'Risco\nMédio'],
+        ['Dispositivos\nDetectados', 'Desconhecidos', 'Risco médio por\ndispositivo'],
         [str(total_dispositivos),
          str(total_desconhecidos),
-            f'{risco_medio:.1f}'],
+            f'{risco_medio:.1f}' if risco_medio is not None else '—'],
     ]
     t = Table(dados_metricas, colWidths=[4.5 * cm, 4.5 * cm, 4.5 * cm],
               rowHeights=[0.7 * cm, 1.2 * cm])
@@ -505,10 +505,10 @@ def gerar_pdf(dispositivos: list, historico: list = None,
     if contexto_scan and contexto_scan.get("classifier_version") == "v1":
         desconhecidos = "N/D (legado)"
     riscos = [
-        d.get(
-            'risco', 3) for d in dispositivos if isinstance(
-            d.get('risco'), (int, float))]
-    risco_medio = sum(riscos) / len(riscos) if riscos else 0.0
+        d['risco'] for d in dispositivos
+        if isinstance(d.get('risco'), (int, float))
+    ]
+    risco_medio = sum(riscos) / len(riscos) if riscos else None
 
     # ── Estilos ───────────────────────────────────────────────────────────
     estilos = _estilos()
@@ -533,8 +533,10 @@ def gerar_pdf(dispositivos: list, historico: list = None,
                 "Contexto e decomposição do InfraScore", estilos["secao"]
             ),
         ]
+        score_text = formatar_score_pdf(contexto_scan)
         contexto_rows = [
-            ["Scan", str(contexto_scan.get("id", "N/D"))],
+            ["Scan", f'#{contexto_scan.get("id", "N/D")}'],
+            ["InfraScore", score_text],
             ["Modo", contexto_scan.get("modo", "rapido")],
             ["Duração", (
                 f'{contexto_scan["duracao_s"]}s'
@@ -548,9 +550,6 @@ def gerar_pdf(dispositivos: list, historico: list = None,
         historia.append(Table(contexto_rows, colWidths=[5 * cm, 11 * cm]))
         componentes = contexto_scan.get("componentes") or []
         if componentes:
-            score = contexto_scan.get("score_observado")
-            if score is None:
-                score = score_minimo_observado(componentes)
             observed_keys = contexto_scan.get("componentes_observados")
             if observed_keys is None:
                 observed_keys = [
@@ -581,16 +580,6 @@ def gerar_pdf(dispositivos: list, historico: list = None,
             historia.extend([
                 Spacer(1, 0.2 * cm),
                 Paragraph(
-                    (
-                        "Score mínimo observado: "
-                        f'{score:.1f}'.replace(".", ",")
-                        + f'/10 (apenas {", ".join(observed_keys)})'
-                        if score is not None
-                        else "Score mínimo observado: N/D (dados observados insuficientes)."
-                    ),
-                    estilos["aviso"],
-                ),
-                Paragraph(
                     "Componentes não verificados não são tratados como zero. "
                     "U depende da classificação; no modo rápido, hosts sem "
                     "evidência suficiente podem permanecer desconhecidos e "
@@ -614,6 +603,12 @@ def gerar_pdf(dispositivos: list, historico: list = None,
     )
 
     return nome_arquivo
+
+
+def formatar_score_pdf(scan):
+    return formatar_infra_score(
+        scan.get("infra_score"), scan.get("infra_score_cobertura")
+    )
 
 
 # ── Teste rápido ──────────────────────────────────────────────────────────
@@ -657,7 +652,11 @@ def _secao_resumo_executivo(estilos, total_dispositivos, desconhecidos, risco_me
     itens.append(HRFlowable(width='100%', thickness=0.5, color=AZUL_BORDA, spaceAfter=8))
     
     # Avaliação da rede
-    if risco_medio <= 2:
+    if risco_medio is None:
+        status = "⚪ INDISPONÍVEL"
+        cor = TEXTO_MUTED
+        recomendacao = "Risco médio por dispositivo não foi calculado."
+    elif risco_medio <= 2:
         status = "✅ SAUDÁVEL"
         cor = VERDE
         recomendacao = "Rede bem configurada. Continue monitorando."
@@ -674,7 +673,10 @@ def _secao_resumo_executivo(estilos, total_dispositivos, desconhecidos, risco_me
         ["Status Geral", status],
         ["Dispositivos", str(total_dispositivos)],
         ["Desconhecidos", str(desconhecidos)],
-        ["Risco Médio", f"{risco_medio:.1f}/10"],
+        [
+            "Risco médio por dispositivo",
+            f"{risco_medio:.1f}/10" if risco_medio is not None else "—",
+        ],
         ["Recomendação", recomendacao]
     ]
     

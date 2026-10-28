@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 from core.infra_score import (
     ADMIN_PORTS,
     SCORE_WEIGHTS,
+    formatar_infra_score,
     decompor_infra_score,
     score_minimo_observado,
 )
@@ -166,6 +167,12 @@ def _anexar_software_a_dispositivos(conn, devices):
 
 def _env_ativo(name):
     return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def formatar_score_dashboard(scan):
+    return formatar_infra_score(
+        scan.get("infra_score"), scan.get("infra_score_cobertura")
+    )
 
 
 def calcular_infra_score(scan_data, scan_metadata=None):
@@ -341,7 +348,7 @@ def index():
         latest_scan = {
             'id': 0, 'timestamp': datetime.now().isoformat(),
             'ambiente': 'N/A', 'ips_ativos': 0, 'uso': 0,
-            'risco_medio': 0, 'desconhecidos': 0,
+            'risco_medio': None, 'desconhecidos': 0,
             'mac_randomizados': 0, 'recomendacao': 'Nenhum scan',
             'modo': 'rapido', 'scan_services': 0, 'cve_lookup': 0,
             'snmp_enabled': 0,
@@ -413,35 +420,46 @@ def index():
         for d in devices:
             t = d['tipo']
             tipos_count[t] = tipos_count.get(t, 0) + 1
-    scan_data = {'dispositivos': [dict(d) for d in devices], 'ips_ativos': latest_scan.get('ips_ativos', 0), 'desconhecidos': latest_scan.get('desconhecidos', 0)}
-    vulnerability_rows = conn.execute("""
-        SELECT DISTINCT c.software_instance_id, c.cve_id, c.severity
-        FROM cve_findings c
-        JOIN software_instances s ON s.id = c.software_instance_id
-        JOIN endpoints e ON e.id = s.endpoint_id
-        WHERE e.active = 1
-    """).fetchall()
-    scan_data['software_vulnerabilities'] = [dict(row) for row in vulnerability_rows]
     try:
         saved_components = json.loads(
             latest_scan.get("componentes_json") or "[]"
         )
     except (TypeError, ValueError):
         saved_components = []
-    scan_metadata = {
-        "scan_services": scan_services_enabled,
-        "cve_lookup": cve_lookup_enabled,
-        "classifier_version": latest_scan.get("classifier_version", "v1"),
-        "formula_version": latest_scan.get(
-            "formula_version", "normalizada-7-v1"
-        ),
-        "components": saved_components,
-        "cve_coverage_complete": None,
-    }
-    scan_metadata["cve_coverage_complete"] = scan_snapshot.get(
-        "cve_coverage_complete", False
+    persisted_score = latest_scan.get("infra_score")
+    persisted_coverage = latest_scan.get("infra_score_cobertura")
+    coverage_percent = (
+        round(persisted_coverage * 100)
+        if persisted_coverage is not None
+        else None
     )
-    infra_score = calcular_infra_score(scan_data, scan_metadata)
+    if persisted_score is None:
+        score_status, score_color = "⚪ Score indisponível", "neutral"
+        score_reasons = ["Este scan não tem um InfraScore persistido."]
+    elif persisted_coverage is None or persisted_coverage < 1:
+        score_status, score_color = "⚠️ Cobertura parcial", "warning"
+        score_reasons = [
+            "Componentes não verificados não são tratados como zero."
+        ]
+    elif persisted_score <= 2:
+        score_status, score_color = "✅ Saudável", "success"
+        score_reasons = []
+    elif persisted_score <= 5:
+        score_status, score_color = "⚠️ Atenção", "warning"
+        score_reasons = []
+    else:
+        score_status, score_color = "🔴 Risco Elevado", "danger"
+        score_reasons = []
+    infra_score = {
+        "score": persisted_score,
+        "texto": formatar_score_dashboard(latest_scan),
+        "cobertura": persisted_coverage,
+        "coverage_percent": coverage_percent,
+        "status": score_status,
+        "cor": score_color,
+        "motivos": score_reasons,
+        "componentes": saved_components,
+    }
     recent_raw = conn.execute("SELECT timestamp, ips_ativos, uso, risco_medio, desconhecidos, mac_randomizados FROM scans ORDER BY id DESC LIMIT 10").fetchall()
     recent_scans = [{"timestamp": r["timestamp"], "ips_ativos": r["ips_ativos"], "uso": r["uso"], "risco_medio": r["risco_medio"], "desconhecidos": r["desconhecidos"], "mac_randomizados": r["mac_randomizados"]} for r in recent_raw]
     evolucao_raw = conn.execute(
@@ -492,15 +510,22 @@ def api_eventos():
 @login_required
 def history():
     conn = get_db()
-    scans = conn.execute("""
+    scan_rows = conn.execute("""
         SELECT id, timestamp, ips_ativos, uso, risco_medio,
                desconhecidos, mac_randomizados, recomendacao, modo,
                classifier_version, formula_version, scan_services, cve_lookup,
-               snmp_enabled
+               snmp_enabled, infra_score, infra_score_cobertura, score_formula
         FROM scans
         ORDER BY id DESC
     """).fetchall()
     conn.close()
+    scans = []
+    for row in scan_rows:
+        scan = dict(row)
+        scan["infra_score_text"] = formatar_infra_score(
+            scan["infra_score"], scan["infra_score_cobertura"]
+        )
+        scans.append(scan)
     return render_template("history.html", scans=scans, username=current_user.username)
 
 if __name__ == "__main__":
