@@ -1,6 +1,38 @@
 # core/classifier.py
+"""
+Classificador de dispositivos — v3-conservador.
+
+Princípios:
+- MAC localmente administrado (aleatório) é EVIDÊNCIA, nunca tipo.
+- Marca isolada ou porta isolada não prova o tipo: confiança baixa.
+- Na dúvida, "desconhecido".
+
+Escala de confiança (menor = mais confiável, igual às versões anteriores):
+1 alta · 2 média · 3 baixa · 5 nenhuma.
+"""
+
+import re
+
+CLASSIFICADOR_VERSAO = "v3-conservador"
+
+CONF_ALTA = 1
+CONF_MEDIA = 2
+CONF_BAIXA = 3
+CONF_NENHUMA = 5
 
 _PLACEHOLDER_VENDORS = {"", "local", "unknown", "desconhecido", "n/a", "none"}
+
+# Nomes que o resolvedor local do Linux devolve para o gateway.
+# Não dizem nada sobre o aparelho, então não contam como hostname.
+_HOSTNAMES_SEM_VALOR = {"_gateway", "_outbound"}
+
+
+# ------------------------------------------------------------
+# Normalização
+# ------------------------------------------------------------
+def normalizar_mac(mac):
+    """Minúsculas e separador ':' (aceita '-')."""
+    return str(mac or "").strip().lower().replace("-", ":")
 
 
 def normalizar_hostname(hostname):
@@ -27,7 +59,7 @@ def normalizar_fabricante(vendor):
 def mac_localmente_administrado(mac):
     """Retorna se o bit U/L do primeiro octeto do MAC está definido."""
     try:
-        first_octet_text = mac.split(":")[0]
+        first_octet_text = normalizar_mac(mac).split(":")[0]
         if len(first_octet_text) != 2:
             return False
         first_octet = int(first_octet_text, 16)
@@ -36,284 +68,179 @@ def mac_localmente_administrado(mac):
     return bool(first_octet & 0x02)
 
 
-def classificar_dispositivo(hostname="", vendor="", ip="", mac="", open_ports=None):
+def vendor_tem(vendor, *marcas):
     """
-    Classifica o dispositivo baseado em múltiplas informações
-    
+    True se alguma marca aparece no INÍCIO de uma palavra do fabricante.
+    Evita falsos positivos de substring (ex.: 'hp' dentro de outra palavra).
+    Atenção: 'intel' também casa com 'intelbras'; trate Intelbras antes.
+    """
+    v = str(vendor or "").casefold()
+    return any(
+        re.search(rf"(?<![a-z0-9]){re.escape(m.casefold())}", v) for m in marcas
+    )
+
+
+def _eh_gateway(ip, gateway_ip):
+    if gateway_ip:
+        return ip == gateway_ip
+    # Fallback por convenção, só quando o IP real do gateway não foi informado.
+    return ip.endswith(".1") or ip.endswith(".254")
+
+
+# ------------------------------------------------------------
+# Classificação principal
+# ------------------------------------------------------------
+def classificar_dispositivo(
+    hostname="", vendor="", ip="", mac="", open_ports=None, gateway_ip=None
+):
+    """
+    Classifica o dispositivo com base nas evidências disponíveis.
+
     Args:
-        hostname: Nome do dispositivo
-        vendor: Fabricante
-        ip: Endereço IP
-        mac: Endereço MAC
-        open_ports: Lista de portas abertas
-    
+        hostname: nome do dispositivo
+        vendor: fabricante (OUI)
+        ip: endereço IP
+        mac: endereço MAC
+        open_ports: lista de portas abertas
+        gateway_ip: IP real do gateway (opcional, mais confiável que '.1')
+
     Returns:
-        tuple: (tipo, nivel_confianca)
+        tuple: (tipo, confianca) — confiança: 1 melhor, 5 pior
     """
-    if open_ports is None:
-        open_ports = []
-    
+    open_ports = list(open_ports or [])
     hostname = normalizar_hostname(hostname).lower()
-    vendor = normalizar_fabricante(vendor).lower()
+    if hostname in _HOSTNAMES_SEM_VALOR:
+        hostname = ""
+    vendor = normalizar_fabricante(vendor)
     ip = ip or ""
-    mac = mac or ""
+    mac = normalizar_mac(mac)
+    gateway = _eh_gateway(ip, gateway_ip)
 
-    # =========================
-    # ROKU (prioridade máxima - identificação por MAC ou porta)
-    # =========================
-    if mac.startswith('60:92:c8') or 8060 in open_ports:
-        return "roku", 1
+    # Roku: porta 8060 (ECP) ou OUI conhecido.
+    # Confirme o OUI 60:92:c8 na sua base antes de confiar só nele.
+    if mac.startswith("60:92:c8") or 8060 in open_ports:
+        return "roku", CONF_ALTA
 
-    # Sem hostname nem portas, não inferir um tipo a partir de MAC aleatório
-    # ou de um fabricante que não foi identificado.
+    # Sem hostname nem portas, não inferir tipo a partir de MAC aleatório
+    # ou de fabricante não identificado.
     if (
         not hostname
         and not open_ports
         and (mac_localmente_administrado(mac) or not vendor)
     ):
-        return "desconhecido", 5
+        return "desconhecido", CONF_NENHUMA
 
-    # =========================
-    # Amino (set-top box / TV Box)
-    # =========================
-    if "amino" in vendor:
-        return "smarttv", 2
-    
-    # =========================
-    # TP-Link
-    # =========================
-    if "tp-link" in vendor:
-        if ip.endswith(".1") or ip.endswith(".254"):
-            return "roteador", 1
+    if vendor_tem(vendor, "amino"):
+        return "smarttv", CONF_MEDIA
+
+    if vendor_tem(vendor, "tp-link", "tplink"):
+        if gateway:
+            return "roteador", CONF_ALTA
         if any(x in hostname for x in ["router", "gateway", "archer", "tplink", "deco"]):
-            return "roteador", 1
+            return "roteador", CONF_ALTA
         if 80 in open_ports or 443 in open_ports or 53 in open_ports:
-            return "roteador", 1
-        return "switch/rede", 2
-    
-    # =========================
-    # Cisco
-    # =========================
-    if "cisco" in vendor:
-        if ip.endswith(".1") or ip.endswith(".254"):
-            return "roteador", 1
-        return "infraestrutura", 2
-    
-    # =========================
-    # PCs (Intel, Dell, Lenovo, etc)
-    # =========================
-    if any(x in vendor for x in ["intel", "dell", "lenovo", "asus", "acer", "hp"]):
-        return "computador_conhecido", 1
-    
-    # =========================
-    # Smart TVs
-    # =========================
-    if any(x in vendor for x in ["samsung", "lg", "sony", "philips"]):
-        return "smarttv", 2
-    
-    # =========================
-    # Apple
-    # =========================
-    if "apple" in vendor:
+            # TP-Link também fabrica câmeras e tomadas com web: confiança média.
+            return "roteador", CONF_MEDIA
+        return "switch/rede", CONF_BAIXA
+
+    if vendor_tem(vendor, "cisco"):
+        if gateway:
+            return "roteador", CONF_ALTA
+        return "infraestrutura", CONF_MEDIA
+
+    # Intelbras ANTES de Intel (o prefixo 'intel' casaria com 'intelbras').
+    if vendor_tem(vendor, "intelbras"):
+        # Intelbras fabrica câmeras IP, roteadores e APs. RTSP (554) é
+        # evidência forte de câmera.
+        if 554 in open_ports:
+            return "camera", CONF_MEDIA
+        return "infraestrutura", CONF_BAIXA
+
+    if vendor_tem(vendor, "intel", "dell", "lenovo", "asus", "acer", "hp", "hewlett"):
+        return "computador_conhecido", CONF_MEDIA
+
+    # Marca isolada não prova tipo: essas marcas fazem celular, TV e mais.
+    if vendor_tem(vendor, "samsung", "lg", "sony", "philips"):
+        return "smarttv", CONF_BAIXA
+
+    if vendor_tem(vendor, "apple"):
         if "iphone" in hostname or "ipad" in hostname:
-            return "mobile/ios", 2
+            return "mobile/ios", CONF_MEDIA
         if "apple tv" in hostname:
-            return "smarttv", 2
-        return "mobile/apple", 2
-    
-    # =========================
-    # IoT
-    # =========================
-    if any(x in vendor for x in ["espressif", "tuya", "wemos", "node mcu"]):
-        return "iot", 3
-    if any(x in vendor for x in ["hikvision", "dahua"]):
-        return "camera", 3
-    
-    # =========================
-    # Android/Mobile
-    # =========================
-    if any(x in vendor for x in ["xiaomi", "motorola", "huawei", "oneplus", "google"]):
-        return "mobile/android", 2
-    
-    # =========================
-    # Impressoras
-    # =========================
-    if any(x in vendor for x in ["brother", "epson", "canon", "kyocera"]):
-        return "impressora", 2
-    
-    # =========================
-    # Virtualização
-    # =========================
-    if any(x in vendor for x in ["vmware", "virtualbox", "qemu"]):
-        return "virtual", 2
-    
-    # =========================
-    # MAC Randomizado (dispositivos móveis)
-    # =========================
-    if "privado" in vendor or "randomizado" in vendor:
-        if mac.startswith(('46:', '4e:', '5e:', '6a:', '2a:')):
-            return "mobile/android", 2
-        return "mobile/desconhecido", 3
-    
-    # =========================
-    # Porta 5353 (mDNS) - comum em smartphones e smart TVs
-    # =========================
+            return "smarttv", CONF_MEDIA
+        return "mobile/apple", CONF_BAIXA
+
+    if vendor_tem(vendor, "espressif", "tuya", "wemos", "node mcu"):
+        return "iot", CONF_BAIXA
+    if vendor_tem(vendor, "hikvision", "dahua"):
+        return "camera", CONF_BAIXA
+
+    if vendor_tem(vendor, "xiaomi", "motorola", "huawei", "oneplus", "google"):
+        return "mobile/android", CONF_BAIXA
+
+    if vendor_tem(vendor, "brother", "epson", "canon", "kyocera"):
+        return "impressora", CONF_MEDIA
+
+    if vendor_tem(vendor, "vmware", "virtualbox", "qemu"):
+        return "virtual", CONF_MEDIA
+
+    # Evidência por porta isolada: confiança baixa
+    # (NAS, roteadores e câmeras também têm 445, 22 e 80).
+    if 554 in open_ports:
+        return "camera", CONF_BAIXA
     if 5353 in open_ports:
-        return "smart_device", 2
-    
-    # =========================
-    # Windows (porta 445 ou 3389)
-    # =========================
+        return "smart_device", CONF_BAIXA
     if 445 in open_ports or 3389 in open_ports:
-        return "computador_windows", 2
-    
-    # =========================
-    # Linux (porta 22 e 80)
-    # =========================
+        return "computador_windows", CONF_BAIXA
     if 22 in open_ports and 80 in open_ports:
-        return "computador_linux", 2
-    # =========================
-    # Prefixos MAC específicos (Android)
-    # =========================
-    if mac.startswith(('56:6e:b6', '60:92:c8')):
-        return "mobile/android", 2
-    
-    # =========================
-    # Fabricantes desconhecidos que são móveis
-    # =========================
-    if vendor == "unknown" and (5353 in open_ports or 5555 in open_ports):
-        return "mobile/android", 2
+        return "computador_linux", CONF_BAIXA
 
-    # =========================
-    # Prefixos MAC específicos (Android/Dispositivos móveis)
-    # =========================
-    if mac.startswith(('92:dd:a1', '2a:fa:67')):
-        return "mobile/android", 2
-    # =========================
-    # Roku (porta 8060 aberta)
-    # =========================
-    if 8060 in open_ports:
-        return "roku", 2
-    
-    # Prefixo MAC Roku
-    if mac.startswith('60:92:c8'):
-        return "roku", 2
+    return "desconhecido", CONF_NENHUMA
 
-    # =========================
-    # Dispositivo com TTL 64 e sem portas (modo economia)
-    # =========================
-    if mac.startswith('72:fb:ad'):
-        return "mobile/android", 2
 
-    
-    # =========================
-    # Fallback
-    # =========================
-    if mac.startswith("72:fb:ad"):
-        return "mobile/android", 2
-    return "desconhecido", 5
+# ------------------------------------------------------------
+# Contagem e níveis
+# ------------------------------------------------------------
+def tipo_eh_desconhecido(tipo):
+    """'desconhecido' e variantes como 'mobile/desconhecido' (scans antigos)."""
+    t = str(tipo or "desconhecido").strip().lower()
+    return t == "desconhecido" or t.endswith("/desconhecido")
 
 
 def contar_dispositivos_desconhecidos(dispositivos):
-    """Conta somente dispositivos sem uma classe determinada pelo classificador."""
+    """Conta dispositivos sem uma classe determinada pelo classificador."""
     return sum(
-        1
-        for device in dispositivos
-        if str(device.get("tipo", "desconhecido")).strip().lower()
-        == "desconhecido"
+        1 for device in dispositivos if tipo_eh_desconhecido(device.get("tipo"))
     )
 
 
+def nivel_identificacao(dispositivo):
+    """Nível de identificação para exibição (aqui 3 = melhor, só para UI)."""
+    fab = normalizar_fabricante(dispositivo.get("fabricante"))
+    fabricante_util = bool(fab) and not fab.casefold().startswith("mac local")
+    if fabricante_util:
+        return {"nivel": 3, "texto": "Conhecido", "cor": "🟢"}
+    if dispositivo.get("open_ports"):
+        return {"nivel": 2, "texto": "Parcialmente identificado", "cor": "🟡"}
+    return {"nivel": 1, "texto": "Desconhecido", "cor": "🔴"}
+
+
+# ------------------------------------------------------------
+# Auxiliares
+# ------------------------------------------------------------
 def identificar_tipo_por_mac(mac):
-    """Identifica o tipo do dispositivo baseado no prefixo MAC (OUI)"""
+    """Tipo pelo prefixo MAC (OUI) para fabricantes fixos conhecidos."""
+    mac = normalizar_mac(mac)
     if not mac or mac == "desconhecido":
         return None
-    
+
     tipos_por_mac = {
         "50:3e:aa": "switch/rede",
         "3c:84:6a": "roteador",
         "a0:0f:37": "infraestrutura",
         "8c:b0:e9": "computador_conhecido",
     }
-    
-    mac_upper = mac.upper()
     for prefixo, tipo in tipos_por_mac.items():
-        if mac_upper.startswith(prefixo.upper()):
+        if mac.startswith(prefixo):
             return tipo
     return None
-
-
-def classificar_dispositivo_randomizado(mac, hostname=""):
-    """Classifica dispositivos com MAC randomizado baseado em padrões"""
-    mac_prefix = mac[:8].upper() if mac else ""
-    hostname = (hostname or "").lower()
-    
-    android_prefixes = ['46:', '4E:', '5E:', '6A:', '2A:', '3A:', '7A:', '8A:', '9A:', 'AE:', 'BE:', 'CE:', 'DE:', 'EE:', 'FE:']
-    ios_prefixes = ['2A:', '4A:', '6A:', '8A:', '9A:', 'BA:', 'CA:', 'DA:', 'EA:', 'FA:']
-    windows_prefixes = ['1E:', '3E:', '5E:', '7E:', '9E:', 'BE:', 'DE:', 'FE:']
-    
-    if 'android' in hostname or 'xiaomi' in hostname:
-        return "mobile/android", 2
-    if 'iphone' in hostname or 'ipad' in hostname or 'apple' in hostname:
-        return "mobile/ios", 2
-    if 'windows' in hostname or 'win' in hostname:
-        return "mobile/windows", 2
-    
-    for prefix in android_prefixes:
-        if mac_prefix.startswith(prefix):
-            return "mobile/android", 2
-    for prefix in ios_prefixes:
-        if mac_prefix.startswith(prefix):
-            return "mobile/ios", 2
-    for prefix in windows_prefixes:
-        if mac_prefix.startswith(prefix):
-            return "mobile/windows", 2
-    
-    return "mobile/desconhecido", 3
-
-
-def classificar_por_porta(open_ports):
-    """Classifica dispositivo baseado nas portas abertas"""
-    if not open_ports:
-        return None
-    
-    portas_para_tipo = {
-        554: "camera_ip",
-        8008: "camera_ip",
-        8000: "camera_ip",
-        9100: "impressora",
-        515: "impressora",
-        1883: "iot_mqtt",
-        8883: "iot_mqtt",
-        1900: "smart_device",
-        5353: "smart_device",
-        8200: "smart_tv",
-        8009: "chromecast",
-        7000: "tv",
-        5000: "nas",
-        8088: "router",
-        5001: "nas_https",
-        32400: "plex",
-    }
-    
-    for port, tipo in portas_para_tipo.items():
-        if port in open_ports:
-            return tipo
-    
-    if 22 in open_ports and 80 in open_ports:
-        return "linux_server"
-    if 3389 in open_ports:
-        return "windows_server"
-    if 445 in open_ports:
-        return "windows_computer"
-    
-    return None
-
-
-def nivel_identificacao(dispositivo):
-    """Classifica nível de identificação do dispositivo"""
-    if dispositivo.get('fabricante') not in ['desconhecido', 'Unknown', 'local']:
-        return {"nivel": 3, "texto": "Conhecido", "cor": "🟢"}
-    if dispositivo.get('open_ports'):
-        return {"nivel": 2, "texto": "Parcialmente identificado", "cor": "🟡"}
-    return {"nivel": 1, "texto": "Desconhecido", "cor": "🔴"}

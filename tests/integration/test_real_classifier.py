@@ -50,10 +50,8 @@ class TestRealClassifier:
             mac="",
             open_ports=[554, 80]
         )
-        # Intelbras pode retornar 'computador_conhecido'
-        tipos_aceitaveis = ["camera_ip", "camera", "iot", "computador_conhecido"]
-        assert tipo in tipos_aceitaveis, \
-            f"Esperado {tipos_aceitaveis}, obteve {tipo}"
+        # Intelbras fabrica câmeras IP; com RTSP (554) é câmera, não computador
+        assert tipo == "camera", f"Esperado camera, obteve {tipo}"
         
         # Câmera com RTSP - outro fabricante
         tipo, _ = classificar_dispositivo(
@@ -87,4 +85,4 @@ class TestRealClassifier:
             mac="",
             open_ports=[]
         )
-        assert confianca in [1, 2]
+        assert confianca in [1, 2, 3]
