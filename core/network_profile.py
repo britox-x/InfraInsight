@@ -6,7 +6,7 @@ def gerar_perfil(dispositivos):
         tipos[tipo] = tipos.get(tipo, 0) + 1
     
     # Determinar tipo de rede
-    if tipos.get('smarttv', 0) > 0 or tipos.get('camera_ip', 0) > 0:
+    if tipos.get('smarttv', 0) > 0 or tipos.get("camera", 0) > 0:
         perfil = "Rede doméstica híbrida com dispositivos multimídia e IoT"
     elif tipos.get('roteador', 0) > 1:
         perfil = "Rede com múltiplos pontos de acesso"
