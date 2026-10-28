@@ -65,8 +65,11 @@ storage/*.json
 reports/*.pdf
 reports/*.csv
 reports/*.html
+reports/*.png 
 exports/*.csv
 exports/*.json
+exports/*.png  
+teste_relatorio.pdf 
 
 # Backups
 *.bak
