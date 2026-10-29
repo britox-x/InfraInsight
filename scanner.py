@@ -27,6 +27,8 @@ from core.classifier import (
     normalizar_fabricante,
     normalizar_hostname,
 )
+from core.discovery_ssdp import descobrir_ssdp, inferir_tipo_por_ssdp
+from core.discovery_mdns import coletar_mdns, melhor_evidencia
 from core.fingerprint.nmap_parser import parsear_servicos_nmap
 from core.scan_config import obter_portas_scan
 from core.snmp_scanner import (
@@ -37,12 +39,26 @@ from core.infra_score import cobertura_infra_score, decompor_infra_score
 
 init_database()
 
+# --- NOVO: Carregar Lista de Referência ---
+def carregar_referencia():
+    """Lê o arquivo referencia.csv e retorna um dicionário {mac: (nome, tipo)}"""
+    ref = {}
+    if os.path.exists("referencia.csv"):
+        try:
+            with open("referencia.csv", mode="r", encoding="utf-8") as f:
+                leitor = csv.DictReader(f)
+                for linha in leitor:
+                    mac = linha['mac'].strip().lower()
+                    ref[mac] = (linha['nome'].strip(), linha['tipo'].strip())
+        except Exception as e:
+            print(f"⚠️ Erro ao ler referencia.csv: {e}")
+    return ref
+# -----------------------------------------
+
 def obter_ip_real():
     """Obtém o IP real da máquina (não localhost)"""
     try:
-        # Usar ip addr show
         resultado = subprocess.check_output(['ip', 'addr', 'show'], text=True)
-        # Procurar IPs que não sejam 127.0.0.1
         matches = re.findall(r'inet (\d+\.\d+\.\d+\.\d+)/\d+', resultado)
         for ip in matches:
             if not ip.startswith('127.'):
@@ -50,7 +66,6 @@ def obter_ip_real():
     except:
         pass
     
-    # Fallback
     try:
         import socket
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -129,6 +144,17 @@ def scan_hosts(rede, detect_services=False):
         arguments='-sn -n -PR -PE -PS80,443 -T4 --max-retries 1',
     )
 
+    # --- DESCOBERTA SSDP e mDNS ---
+    print("📡 Buscando dispositivos via SSDP (UPnP)...")
+    ssdp_resultados = descobrir_ssdp(timeout=2)
+    
+    print("📡 Buscando dispositivos via mDNS (Bonjour)...")
+    mdns_resultados = coletar_mdns(escuta_s=3.0)
+    
+    # Carrega a referência manual
+    ref_manual = carregar_referencia()
+    # -----------------------------
+
     for host in nm.all_hosts():
         if nm[host].state() == 'up':
             mac = nm[host]['addresses'].get('mac', '')
@@ -136,12 +162,64 @@ def scan_hosts(rede, detect_services=False):
             hostname_raw = nm[host].hostname() or obter_hostname(host)
             vendor = normalizar_fabricante(vendor_raw)
             hostname = normalizar_hostname(hostname_raw)
-            tipo, confidence = classificar_dispositivo(
-                hostname=hostname,
-                vendor=vendor,
-                ip=host,
-                mac=mac,
-            )
+            
+            # Valores padrão antes de verificar a referência
+            tipo = "desconhecido"
+            confidence = 5
+            evidencias = []
+            encontrado_na_ref = False
+
+            # --- PRIORIDADE 1: LISTA DE REFERÊNCIA MANUAL ---
+            mac_normalizado = mac.strip().lower()
+            if mac_normalizado in ref_manual:
+                nome_ref, tipo_ref = ref_manual[mac_normalizado]
+                hostname = nome_ref # Usa o nome que você deu
+                tipo = tipo_ref
+                confidence = 1 # Confiança máxima (manual)
+                encontrado_na_ref = True
+                evidencias.append(f"Referência Manual: {nome_ref}")
+            # ------------------------------------------------
+
+            # Se não achou na referência, tenta a classificação automática
+            if not encontrado_na_ref:
+                # Classificação inicial (via ARP, portas, etc)
+                tipo, confidence = classificar_dispositivo(
+                    hostname=hostname,
+                    vendor=vendor,
+                    ip=host,
+                    mac=mac,
+                )
+                
+                if hostname: evidencias.append(f"Hostname: {hostname}")
+                if vendor: evidencias.append(f"Fabricante/OUI: {vendor}")
+                if mac_localmente_administrado(mac): evidencias.append("MAC localmente administrado")
+
+                # --- ENRIQUECIMENTO VIA SSDP ---
+                if host in ssdp_resultados:
+                    ssdp_info = ssdp_resultados[host]
+                    tipo_ssdp = inferir_tipo_por_ssdp(
+                        ssdp_info.get('server', ''),
+                        ssdp_info.get('st', ''),
+                        ssdp_info.get('location', '')
+                    )
+                    
+                    if tipo_ssdp != 'desconhecido':
+                        tipo = tipo_ssdp
+                        confidence = 1 
+                    
+                    server_str = ssdp_info.get('server', 'Desconhecido')
+                    evidencias.append(f"SSDP: {server_str}")
+
+                # --- ENRIQUECIMENTO VIA mDNS ---
+                if host in mdns_resultados:
+                    mdns_info = mdns_resultados[host]
+                    ev_mdns = melhor_evidencia(mdns_info)
+                    if ev_mdns:
+                        if ev_mdns['confianca'] < confidence:
+                            tipo = ev_mdns['tipo']
+                            confidence = ev_mdns['confianca']
+                        evidencias.append(f"mDNS: {ev_mdns['motivo']}")
+                # -------------------------------
 
             dispositivos.append({
                 'ip': host,
@@ -150,13 +228,7 @@ def scan_hosts(rede, detect_services=False):
                 'hostname': hostname,
                 'tipo': tipo,
                 'classificacao_confianca': confidence,
-                'classificacao_evidencia': (
-                    [f"Hostname: {hostname}"] if hostname else []
-                ) + ([f"Fabricante/OUI: {vendor}"] if vendor else [])
-                + (
-                    ["MAC localmente administrado"]
-                    if mac_localmente_administrado(mac) else []
-                ),
+                'classificacao_evidencia': evidencias,
                 'risco': 0,
                 'severity': 'Baixo',
                 'open_ports': [],
@@ -253,12 +325,11 @@ if snmp_enabled:
 if dispositivos:
     print(f"\n✅ {len(dispositivos)} dispositivos encontrados:")
     print("=" * 50)
-    for d in dispositivos[:10]:  # Mostrar apenas os 10 primeiros
-        print(f"  📱 {d['ip']} - {d['tipo']} ({d['fabricante']})")
+    for d in dispositivos[:10]:
+        print(f"  📱 {d['ip']} - {d['tipo']} ({d['hostname'] or d['fabricante']})")
     if len(dispositivos) > 10:
         print(f"  ... e mais {len(dispositivos) - 10} dispositivos")
     
-    # Salvar (corrigido - salvar_scan espera apenas o dict)
     resultado = {
         'dispositivos': dispositivos,
         'ips_ativos': len(dispositivos),
@@ -318,9 +389,7 @@ if dispositivos:
         'scan_services': scan_services,
         'snmp_enabled': snmp_enabled,
         'cve_lookup': cve_lookup and scan_services,
-        'classifier_version': (
-            'v2-conservador-snmp' if snmp_enabled else 'v2-conservador'
-        ),
+        'classifier_version': 'v3-conservador',
         'formula_version': 'normalizada-7-v1',
         'cve_coverage_complete': cve_coverage_complete,
         'duracao_s': round(time.monotonic() - scan_started, 2),
@@ -340,7 +409,6 @@ if dispositivos:
     scan_id = salvar_scan(resultado)
     print(f"\n💾 Scan salvo com ID: {scan_id}")
     
-    # Exportar CSV
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     try:
         csv_path = f"exports/dispositivos_{timestamp}.csv"
@@ -367,9 +435,7 @@ else:
         'modo': 'servicos' if scan_services else 'rapido',
         'scan_services': scan_services,
         'snmp_enabled': snmp_enabled,
-        'classifier_version': (
-            'v2-conservador-snmp' if snmp_enabled else 'v2-conservador'
-        ),
+        'classifier_version': 'v3-conservador',
         'formula_version': 'normalizada-7-v1',
         'timestamp': datetime.now().isoformat(),
         'duracao_s': round(time.monotonic() - scan_started, 2),
